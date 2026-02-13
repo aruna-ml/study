@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Portal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Login Screen ── */
+        #login-screen {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        #login-screen h1 {
+            font-size: 1.4rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            color: #999;
+        }
+
+        #login-screen input {
+            display: block;
+            width: 280px;
+            padding: 12px 16px;
+            margin: 0 auto 1rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #login-screen input:focus {
+            border-color: #555;
+        }
+
+        #login-screen button {
+            padding: 10px 32px;
+            background: #222;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #login-screen button:hover {
+            background: #333;
+        }
+
+        .error-msg {
+            color: #cc4444;
+            margin-top: 0.8rem;
+            font-size: 0.85rem;
+            min-height: 1.2em;
+        }
+
+        /* ── Dashboard ── */
+        #dashboard {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            padding: 2rem;
+        }
+
+        #dashboard h1 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        #dashboard .subtitle {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #555;
+            margin-bottom: 0.6rem;
+        }
+
+        .link-list {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .link-list li {
+            margin-bottom: 4px;
+        }
+
+        .link-list a {
+            display: block;
+            padding: 14px 18px;
+            background: #141414;
+            border: 1px solid #1e1e1e;
+            border-radius: 10px;
+            color: #d0d0d0;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .link-list a:hover {
+            background: #1c1c1c;
+            border-color: #333;
+        }
+
+        .link-list a .icon {
+            margin-right: 10px;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid #1e1e1e;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+    <h1>Enter password to continue</h1>
+    <form onsubmit="return handleLogin(event)">
+        <input type="password" id="pwd" placeholder="Password" autofocus autocomplete="off" />
+        <button type="submit">Enter</button>
+    </form>
+    <p class="error-msg" id="error-msg"></p>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+    <h1>Study Portal</h1>
+    <p class="subtitle">Apple Interview Prep</p>
+
+    <p class="section-label">Study Guides</p>
+    <ul class="link-list">
+        <li><a href="Capacity_Planning_Study_aukp64qumr.html"><span class="icon">📐</span>Capacity Planning</a></li>
+        <li><a href="Distributed_Design_Study_wxwojiq1h6.html"><span class="icon">🔗</span>Distributed Design</a></li>
+        <li><a href="Forecasting_Study_ut3ks2xrui.html"><span class="icon">📈</span>Forecasting</a></li>
+        <li><a href="Programming_Study_90l6thz8xf.html"><span class="icon">💻</span>Programming</a></li>
+    </ul>
+
+    <hr class="divider" />
+
+    <p class="section-label">Notes</p>
+    <ul class="link-list">
+        <li><a href="https://www.notion.so/Study-notes-306063bace3a803f8dbcc658427d2215?source=copy_link" target="_blank" rel="noopener"><span class="icon">📝</span>Study Notes (Notion)</a></li>
+    </ul>
+</div>
+
+<script>
+    // Simple client-side password gate
+    const PASS_HASH = '5a0d1b6e4c9f8a3d2e7b';
+
+    function simpleHash(str) {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) {
+            h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+        }
+        return h;
+    }
+
+    // Pre-computed hash of the password
+    const EXPECTED = simpleHash('bluegrass-greengrass');
+
+    function handleLogin(e) {
+        e.preventDefault();
+        const input = document.getElementById('pwd').value;
+        if (simpleHash(input) === EXPECTED) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            sessionStorage.setItem('auth', '1');
+        } else {
+            document.getElementById('error-msg').textContent = 'Incorrect password';
+            document.getElementById('pwd').value = '';
+        }
+        return false;
+    }
+
+    // Persist within session
+    if (sessionStorage.getItem('auth') === '1') {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>

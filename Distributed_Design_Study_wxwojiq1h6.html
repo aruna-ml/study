@@ -1,0 +1,2448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributed System Design — iCloud Forecasting & Resource Provisioning</title>
+<!-- KaTeX CSS & JS from CDN — no browser plugins needed -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+  :root {
+    --sidebar-width: 280px;
+    --bg: #fafafa;
+    --sidebar-bg: #1a1a2e;
+    --sidebar-text: #c4c4d4;
+    --sidebar-active: #e94560;
+    --sidebar-hover: #16213e;
+    --accent: #0071e3;
+    --accent-light: #e8f2fd;
+    --text: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --card-bg: #ffffff;
+    --border: #e5e5ea;
+    --code-bg: #f5f5f7;
+    --success: #34c759;
+    --warning: #ff9f0a;
+    --danger: #ff3b30;
+    --info: #5ac8fa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #333 var(--sidebar-bg);
+  }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-header h2 {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .sidebar-header .subtitle {
+    color: var(--sidebar-text);
+    font-size: 12px;
+    margin-top: 4px;
+    opacity: 0.7;
+  }
+
+  .nav-section {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .nav-section-title {
+    color: var(--sidebar-active);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 8px 20px 6px;
+  }
+
+  .nav-link {
+    display: block;
+    padding: 7px 20px 7px 28px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 13.5px;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    line-height: 1.4;
+  }
+
+  .nav-link:hover {
+    background: var(--sidebar-hover);
+    color: #fff;
+  }
+
+  .nav-link.active {
+    color: #fff;
+    background: var(--sidebar-hover);
+    border-left-color: var(--sidebar-active);
+    font-weight: 500;
+  }
+
+  .nav-link.sub {
+    padding-left: 40px;
+    font-size: 12.5px;
+    opacity: 0.85;
+  }
+
+  /* Progress bar */
+  .progress-container {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    position: sticky;
+    bottom: 0;
+    background: var(--sidebar-bg);
+  }
+
+  .progress-label {
+    color: var(--sidebar-text);
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--sidebar-active);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* Main content */
+  .main {
+    margin-left: var(--sidebar-width);
+    padding: 40px 60px 100px;
+    max-width: 900px;
+  }
+
+  .section {
+    margin-bottom: 80px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-number {
+    display: inline-block;
+    background: var(--sidebar-active);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  h1 .thin {
+    font-weight: 300;
+    color: var(--text-secondary);
+  }
+
+  h2 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 48px 0 16px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    scroll-margin-top: 24px;
+  }
+
+  h3 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 32px 0 12px;
+    color: var(--text);
+  }
+
+  h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 24px 0 8px;
+    color: var(--text);
+  }
+
+  p { margin-bottom: 16px; }
+
+  .lead {
+    font-size: 18px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+
+  .card.accent {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-light);
+  }
+
+  .card.warning {
+    border-left: 4px solid var(--warning);
+    background: #fff8ee;
+  }
+
+  .card.success {
+    border-left: 4px solid var(--success);
+    background: #f0faf2;
+  }
+
+  .card.danger {
+    border-left: 4px solid var(--danger);
+    background: #fff5f5;
+  }
+
+  .card-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Translation table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+
+  thead th {
+    background: var(--sidebar-bg);
+    color: #fff;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child { border-radius: 0 8px 0 0; }
+
+  tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tbody tr:hover { background: var(--accent-light); }
+
+  tbody tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+  tbody tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 20px 0;
+    white-space: pre;
+  }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  /* Diagram boxes */
+  .diagram {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* Collapsible */
+  .collapsible {
+    margin: 16px 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .collapsible-header {
+    padding: 14px 20px;
+    background: var(--card-bg);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .collapsible-header:hover { background: var(--code-bg); }
+
+  .collapsible-header::after {
+    content: '+';
+    font-size: 20px;
+    color: var(--accent);
+    font-weight: 300;
+    transition: transform 0.2s;
+  }
+
+  .collapsible.open .collapsible-header::after {
+    content: '−';
+  }
+
+  .collapsible-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  .collapsible.open .collapsible-body {
+    max-height: 5000px;
+  }
+
+  .collapsible-content {
+    padding: 16px 20px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Tags / chips */
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px 4px 2px 0;
+  }
+  .tag.blue { background: #e3f0ff; color: #0055b3; }
+  .tag.green { background: #e6f9e8; color: #1b7a2b; }
+  .tag.orange { background: #fff3e0; color: #b36b00; }
+  .tag.red { background: #ffe5e5; color: #b30000; }
+  .tag.purple { background: #f0e6ff; color: #6b21a8; }
+
+  /* Interview Q&A */
+  .qa {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .qa-question {
+    padding: 16px 20px;
+    background: var(--sidebar-bg);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .qa-question::after {
+    content: 'Show Answer';
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--sidebar-active);
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: opacity 0.2s;
+  }
+
+  .qa.open .qa-question::after {
+    content: 'Hide';
+  }
+
+  .qa-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+
+  .qa.open .qa-answer {
+    max-height: 3000px;
+  }
+
+  .qa-answer-content {
+    padding: 20px;
+    background: #fff;
+  }
+
+  .qa-answer-content p:last-child { margin-bottom: 0; }
+
+  /* Separator */
+  hr {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: 40px 0;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 48px 0 32px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Numbered steps */
+  .step {
+    display: flex;
+    gap: 16px;
+    margin: 20px 0;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    margin-top: 2px;
+  }
+
+  .step-content { flex: 1; }
+  .step-content p:last-child { margin-bottom: 0; }
+
+  /* Two-column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  /* Mobile */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  /* Highlight */
+  mark {
+    background: #fff3cd;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  strong { font-weight: 600; }
+
+  /* Lists */
+  ul, ol {
+    margin: 12px 0 16px 24px;
+  }
+
+  li {
+    margin-bottom: 6px;
+  }
+
+  /* Bridge callout */
+  .bridge {
+    background: linear-gradient(135deg, #f0e6ff 0%, #e3f0ff 100%);
+    border: 1px solid #d4c5f9;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+  }
+
+  .bridge-title {
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #6b21a8;
+    margin-bottom: 8px;
+  }
+
+  /* Math blocks */
+  .math-block {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin: 20px 0;
+    overflow-x: auto;
+    line-height: 2.2;
+  }
+
+  .math-block .math-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .math-block .math-comment {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 4px;
+    display: block;
+    line-height: 1.5;
+  }
+
+  .math-block .constraint-group {
+    margin: 16px 0;
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .math-block .constraint-group:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .math-block .constraint-title {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .katex { font-size: 1.05em; }
+  .katex-display { margin: 0.8em 0; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h2>iCloud System Design</h2>
+    <div class="subtitle">Interview Prep for Arun</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 1</div>
+    <a href="#s1" class="nav-link">The Rosetta Stone</a>
+    <a href="#s1-why" class="nav-link sub">Why This Is Your Edge</a>
+    <a href="#s1-table" class="nav-link sub">Translation Table</a>
+    <a href="#s1-speak" class="nav-link sub">How to Speak Cloud</a>
+    <a href="#s1-narrative" class="nav-link sub">Your Narrative Arc</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 2</div>
+    <a href="#s2" class="nav-link">Cloud Infrastructure</a>
+    <a href="#s2-hierarchy" class="nav-link sub">The Physical Hierarchy</a>
+    <a href="#s2-resources" class="nav-link sub">Resource Types</a>
+    <a href="#s2-icloud" class="nav-link sub">iCloud Specifics</a>
+    <a href="#s2-why-regions" class="nav-link sub">Why Regions Matter</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 3</div>
+    <a href="#s3" class="nav-link">Distributed Systems</a>
+    <a href="#s3-scaling" class="nav-link sub">Scaling & Load Balancing</a>
+    <a href="#s3-data" class="nav-link sub">Data: Replication & Sharding</a>
+    <a href="#s3-reliability" class="nav-link sub">Reliability & Fault Tolerance</a>
+    <a href="#s3-cap" class="nav-link sub">CAP, SLAs, Consistency</a>
+    <a href="#s3-infra" class="nav-link sub">Infrastructure Components</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 4</div>
+    <a href="#s4" class="nav-link">Forecasting Pipeline</a>
+    <a href="#s4-what" class="nav-link sub">What You're Forecasting</a>
+    <a href="#s4-data" class="nav-link sub">Data Collection Layer</a>
+    <a href="#s4-hierarchy" class="nav-link sub">Hierarchical Forecasting</a>
+    <a href="#s4-models" class="nav-link sub">Model Selection</a>
+    <a href="#s4-feedback" class="nav-link sub">Feedback & Retraining</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 5</div>
+    <a href="#s5" class="nav-link">Optimization Engine</a>
+    <a href="#s5-formulation" class="nav-link sub">MIP Formulation</a>
+    <a href="#s5-strategic" class="nav-link sub">Strategic Layer (Quarterly)</a>
+    <a href="#s5-lp" class="nav-link sub">LP Relaxation</a>
+    <a href="#s5-tactical" class="nav-link sub">Tactical Layer (Real-time)</a>
+    <a href="#s5-multi" class="nav-link sub">Multi-Resource Co-optimization</a>
+    <a href="#s5-propagation" class="nav-link sub">Decision Propagation</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 6</div>
+    <a href="#s6" class="nav-link">Interview Walkthrough</a>
+    <a href="#s6-structure" class="nav-link sub">Interview Structure</a>
+    <a href="#s6-arch" class="nav-link sub">Full Architecture Diagram</a>
+    <a href="#s6-questions" class="nav-link sub">Deep-Dive Q&A</a>
+    <a href="#s6-mistakes" class="nav-link sub">Common Mistakes</a>
+    <a href="#s6-20hr" class="nav-link sub">20-Hour Schedule</a>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-label">Reading progress</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+<!-- ============================================================ -->
+<!-- SECTION 1: THE ROSETTA STONE -->
+<!-- ============================================================ -->
+<div class="section" id="s1">
+  <span class="section-number">SECTION 1 OF 6</span>
+  <h1>The Supply Chain <span class="thin">Rosetta Stone</span></h1>
+  <p class="lead">Cloud resource provisioning is supply chain management with different nouns. This section teaches you to translate fluently between the two worlds — and to use that translation as your competitive advantage in the interview.</p>
+
+  <h2 id="s1-why">Why This Is Your Edge, Not Your Gap</h2>
+
+  <p>When most candidates walk into a distributed systems design interview, they reach for textbook answers: they recite CAP theorem, draw standard three-tier architectures, and describe auto-scaling in generic terms. They're correct, but interchangeable. Nothing in their answer tells the interviewer that <em>this specific person</em> has solved hard resource allocation problems at scale.</p>
+
+  <p>You have something they don't: <strong>you've actually built and deployed optimization models that allocate scarce resources across a complex network under uncertainty, cost constraints, and service level requirements.</strong> That's literally the job description for this role.</p>
+
+  <p>The key realization is that Apple's iCloud capacity planning team doesn't need another person who can recite distributed systems theory. They need someone who can formulate a resource allocation problem as a mixed-integer program, build hierarchical forecasts that feed it, and deploy the system on cloud infrastructure. Your Walmart experience — routing imports through ports, IDCs, and RDCs; building hierarchical demand forecasts at SKU &times; store granularity; solving MIPs with CPLEX — maps almost one-to-one onto what this team does daily.</p>
+
+  <div class="card accent">
+    <div class="card-title">The Core Insight</div>
+    <p style="margin:0">The problem Apple is solving is: <em>"Given uncertain future demand for cloud resources across a global network of data centers, how do we decide what to provision, where, and when — minimizing cost while guaranteeing service levels?"</em> Replace "cloud resources" with "inventory" and "data centers" with "distribution centers" and you get: <em>"Given uncertain future demand for products across a network of DCs, how do we decide what to stock, where, and when — minimizing cost while guaranteeing fill rates?"</em> You've solved this. You just need to speak their language.</p>
+  </div>
+
+  <h2 id="s1-table">The Translation Table</h2>
+  <p>Memorize these mappings. In the interview, use the right-column terms fluently, but explicitly bridge to your supply chain experience when explaining your approach.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:45%">Supply Chain (Your World)</th>
+        <th style="width:45%">Cloud / iCloud (Their World)</th>
+        <th style="width:10%">Fit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>SKUs / Products</strong></td>
+        <td><strong>Resource types</strong> — CPU cores, GPU instances, storage (SSD/HDD), memory (RAM), network bandwidth</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Stores / Regional DCs</strong></td>
+        <td><strong>Regions / Availability Zones / Clusters</strong> — geographic groupings of servers</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Demand forecast</strong> at SKU &times; Store</td>
+        <td><strong>Workload forecast</strong> at Service &times; Region &times; Cluster</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Safety stock</strong></td>
+        <td><strong>Headroom / buffer capacity</strong> — extra resources provisioned above forecasted demand</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Replenishment</strong> — sending inventory from DC to store</td>
+        <td><strong>Provisioning</strong> — allocating compute/storage to a cluster; spinning up VMs or containers</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Lead time</strong> (supplier → DC)</td>
+        <td><strong>Procurement lead time</strong> — weeks/months to order, deliver, and rack new hardware</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Service level</strong> (fill rate, in-stock %)</td>
+        <td><strong>SLA</strong> — 99.9% uptime, p99 latency &lt; 200ms, error rate &lt; 0.1%</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Stockout</strong></td>
+        <td><strong>Capacity exhaustion</strong> — leads to degraded service, dropped requests, or outages</td>
+        <td><span class="tag blue">Close</span></td>
+      </tr>
+      <tr>
+        <td><strong>Overstock / carrying cost</strong></td>
+        <td><strong>Stranded capacity</strong> — servers idling, wasting power, money, and carbon</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Multi-echelon inventory optimization</strong></td>
+        <td><strong>Multi-region capacity optimization</strong> — allocating resources across a hierarchy of locations</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Routing imports: ports → IDCs → RDCs</strong></td>
+        <td><strong>Routing requests: CDN → edge → origin clusters</strong></td>
+        <td><span class="tag blue">Close</span></td>
+      </tr>
+      <tr>
+        <td><strong>Hierarchical forecast reconciliation</strong></td>
+        <td><strong>Hierarchical capacity rollup</strong> — ensuring per-cluster forecasts sum to the regional total</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>MIP for optimal routing</strong> (CPLEX)</td>
+        <td><strong>MIP for optimal capacity placement</strong> across regions (same solvers)</td>
+        <td><span class="tag green">Exact</span></td>
+      </tr>
+      <tr>
+        <td><strong>Holiday / promo demand surge</strong></td>
+        <td><strong>iPhone launch / WWDC / iOS update surge</strong></td>
+        <td><span class="tag blue">Close</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card warning">
+    <div class="card-title">Key Difference to Acknowledge</div>
+    <p style="margin:0">The asymmetry of error is more severe in cloud. A stockout at Walmart means a customer can't buy a toaster — inconvenient but recoverable. Capacity exhaustion at iCloud means millions of users can't access their photos, backups, or email — a headline-making outage. This means <strong>you bias more aggressively toward over-provisioning</strong> (higher "safety stock") and you invest more in reactive fallbacks (auto-scaling). Mention this in the interview to show you understand the domain nuance, not just the math.</p>
+  </div>
+
+  <h2 id="s1-speak">How to Speak Cloud — Phrase-by-Phrase</h2>
+  <p>When you're in the interview, you'll be explaining your design. Here's how to bridge naturally between your experience and the cloud domain. Practice saying these out loud.</p>
+
+  <div class="collapsible">
+    <div class="collapsible-header">When explaining forecasting</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p><strong>Don't say:</strong> "I built demand forecasts for products at each store."</p>
+      <p><strong>Do say:</strong> "At Walmart, I built hierarchical demand forecasts at SKU &times; store granularity with short, medium, and long horizons, then reconciled them across the hierarchy. For iCloud, the structure is identical — the 'SKU' becomes a resource type like compute or storage, the 'store' becomes a cluster or region, and the reconciliation math is the same. I'd use LightGBM or a similar gradient boosting model for medium-term forecasts, with temporal features, growth signals, and Apple-specific events like iPhone launches as covariates."</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">When explaining optimization</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p><strong>Don't say:</strong> "I used CPLEX to route imports through distribution centers."</p>
+      <p><strong>Do say:</strong> "At Walmart, I formulated and solved a mixed-integer program to optimally route imports through ports, import DCs, and regional DCs — minimizing transportation cost subject to capacity, demand satisfaction, and service level constraints. For iCloud capacity placement, the formulation is structurally identical: the decision variables are how many units of each resource type to provision in each cluster; the objective minimizes total infrastructure cost; and the constraints enforce SLA compliance, fault tolerance requirements like N+1 redundancy, data sovereignty rules, and procurement lead times. I'd solve it with CPLEX or Gurobi on a quarterly planning cycle."</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">When explaining real-time operations</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p><strong>Don't say:</strong> "I don't have experience with auto-scaling."</p>
+      <p><strong>Do say:</strong> "The two-layer approach I'd use mirrors how supply chains operate: a strategic layer that plans quarterly capacity purchases — that's the MIP — and a tactical layer that makes day-to-day adjustments within existing capacity. In cloud terms, the tactical layer is the auto-scaler. It uses short-term forecasts to pre-scale before demand arrives, like how a DC pre-positions inventory before a known surge. The reactive component — scaling when CPU exceeds a threshold — is the fallback, like emergency replenishment when a stockout is imminent. At Walmart, we had both: long-term network design and daily replenishment triggers."</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">When explaining monitoring</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p><strong>Don't say:</strong> "I built dashboards at Walmart."</p>
+      <p><strong>Do say:</strong> "Closing the feedback loop is critical. At Walmart, I built KPI forecasting models and standardized benchmarking methods — tracking forecast accuracy, identifying bias, and triggering retraining when performance degraded. For iCloud, the monitoring layer tracks forecast accuracy against actual resource consumption, SLA compliance per region, cost variance against budget, and capacity utilization rates. When forecast accuracy drops below a threshold — indicating demand pattern drift — the system triggers model retraining. This is the same concept as detecting when a product's demand pattern changes seasonality and needs a model refresh."</p>
+    </div></div>
+  </div>
+
+  <h2 id="s1-narrative">Your 30-Second Opening Narrative</h2>
+  <p>When the interviewer says "Tell me how you'd approach this" or "Walk me through your design," start with this framing. It establishes your credibility immediately and tells the interviewer <em>why</em> you belong in this conversation.</p>
+
+  <div class="card success">
+    <div class="card-title">Your Opening Statement — Practice This Verbatim</div>
+    <p>"I've spent the last three years at Walmart and Amazon solving what I see as structurally the same problem: forecasting demand across a complex network and optimizing resource allocation under cost, capacity, and service-level constraints. At Walmart, my 'regions' were distribution centers, my 'resources' were inventory and truck capacity, and my 'SLAs' were fill rates. I built hierarchical forecasts at SKU-by-store granularity feeding into MIP-based allocation models solved with CPLEX.</p>
+    <p style="margin:0">The translation to cloud resource provisioning is natural — the math is the same, the resource types change, and the failure mode shifts from stockouts to outages, which raises the stakes on the over-provisioning side. Let me walk you through how I'd design this system for iCloud."</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: CLOUD INFRASTRUCTURE -->
+<!-- ============================================================ -->
+<div class="section" id="s2">
+  <span class="section-number">SECTION 2 OF 6</span>
+  <h1>Cloud Infrastructure <span class="thin">Fundamentals</span></h1>
+  <p class="lead">You need to understand the physical and logical hierarchy of cloud infrastructure well enough to draw it on a whiteboard and explain why each level exists. This section gives you that mental model.</p>
+
+  <h2 id="s2-hierarchy">The Physical Hierarchy</h2>
+  <p>Cloud infrastructure is organized as a hierarchy from global down to individual machines. Each level exists for a specific operational reason. Think of it like Walmart's network: global operations → national → regional DCs → individual stores → shelf positions.</p>
+
+  <div class="diagram">                          ┌─────────────────────┐
+                          │       GLOBAL        │  iCloud serves 2B+ devices
+                          │   (planet-scale)     │  across 200+ countries
+                          └──────────┬──────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              ▼                      ▼                      ▼
+     ┌─────────────┐       ┌─────────────┐       ┌─────────────┐
+     │  US-WEST    │       │   EUROPE    │       │ ASIA-PACIFIC│   REGIONS
+     │  Region     │       │   Region    │       │   Region    │   (geographic)
+     └──────┬──────┘       └──────┬──────┘       └──────┬──────┘
+            │                     │                     │
+      ┌─────┼─────┐        ┌─────┼─────┐         ┌─────┼─────┐
+      ▼     ▼     ▼        ▼     ▼     ▼         ▼     ▼     ▼
+    ┌───┐ ┌───┐ ┌───┐    ┌───┐ ┌───┐ ┌───┐     ┌───┐ ┌───┐ ┌───┐
+    │AZ1│ │AZ2│ │AZ3│    │AZ1│ │AZ2│ │AZ3│     │AZ1│ │AZ2│ │AZ3│  AVAILABILITY
+    └─┬─┘ └─┬─┘ └─┬─┘    └───┘ └───┘ └───┘     └───┘ └───┘ └───┘  ZONES
+      │     │     │
+   ┌──┴──┐  ...   ...     Each AZ is a physically separate
+   │Clstr│                 data center (or group of buildings)
+   │  A  │                 with independent power, cooling,
+   └──┬──┘                 and network uplinks.
+      │
+  ┌───┼───┐
+  ▼   ▼   ▼
+┌───┐┌───┐┌───┐           RACKS — physical cabinets
+│R1 ││R2 ││R3 │           containing 20-40 servers each,
+└─┬─┘└───┘└───┘           sharing a top-of-rack network switch.
+  │
+┌─┴──────────────┐
+│ Server / Node  │         NODES — individual machines with
+│ CPU │ RAM │ SSD│         specific resource configurations.
+│ GPU │ NIC │    │         A node might have 64 CPU cores,
+└────────────────┘         256GB RAM, 4TB SSD, 2x 25Gbps NIC.</div>
+
+  <h3>Why each level exists</h3>
+
+  <table>
+    <thead>
+      <tr><th>Level</th><th>Why It Exists</th><th>Supply Chain Analogy</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Region</strong></td>
+        <td>Geographic proximity to users (latency), data sovereignty (GDPR mandates EU data stays in EU), natural disaster isolation</td>
+        <td>National/market-level: US division, EU division, APAC division</td>
+      </tr>
+      <tr>
+        <td><strong>Availability Zone</strong></td>
+        <td>Fault isolation within a region. If one building loses power or floods, the others keep running. Connected by high-speed, low-latency links (&lt;2ms between AZs in same region)</td>
+        <td>Multiple DCs in the same metro area — if one warehouse burns down, the others absorb the demand</td>
+      </tr>
+      <tr>
+        <td><strong>Cluster</strong></td>
+        <td>Operational grouping for management. A cluster shares networking infrastructure and is often the unit at which capacity is planned and allocated</td>
+        <td>A floor or section within a warehouse, specialized for certain product types</td>
+      </tr>
+      <tr>
+        <td><strong>Rack</strong></td>
+        <td>Physical constraint: power budget, cooling capacity, and network bandwidth are allocated per rack</td>
+        <td>A shelf unit or pallet position — physical space with power/weight limits</td>
+      </tr>
+      <tr>
+        <td><strong>Node/Server</strong></td>
+        <td>The atomic unit of compute. Individual machines that run workloads</td>
+        <td>An individual inventory position / bin</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="s2-resources">Resource Types You Must Know</h2>
+  <p>When you design the forecasting and provisioning engine, you'll need to forecast and allocate each of these resource types. They're the "SKUs" in your cloud supply chain.</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Compute (CPU / GPU)</div>
+      <p>Processing power measured in cores or vCPUs. Used for handling API requests, running ML inference (Siri, photo classification), and processing iCloud sync operations. This is the most elastic resource — you can add/remove CPU capacity quickly via containers.</p>
+      <p><span class="tag blue">Elastic</span> <span class="tag green">Auto-scalable</span></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Storage (SSD / HDD / Object)</div>
+      <p>Persistent data storage. For iCloud, this is the dominant resource — user photos, documents, device backups, and iCloud Drive data. Measured in petabytes per region. <strong>This is the hardest resource to provision</strong> because storage only grows (users rarely delete data) and it's expensive to move between regions.</p>
+      <p><span class="tag orange">Inelastic</span> <span class="tag red">Hard to migrate</span></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Memory (RAM)</div>
+      <p>Fast, volatile storage used for caching frequently accessed data, in-memory databases, and active session state. Measured in GB per node. A cache hit on RAM is 1000x faster than fetching from SSD. Critical for services like iCloud Keychain and Mail where users expect instant access.</p>
+      <p><span class="tag blue">Elastic</span> <span class="tag orange">Coupled to compute</span></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Network Bandwidth</div>
+      <p>Data transfer capacity measured in Gbps. Two types: <strong>ingress/egress</strong> (user uploads/downloads) and <strong>inter-region</strong> (replication, migration). When a billion iPhones sync overnight, that's a network bandwidth event. Cross-region bandwidth is expensive and limited.</p>
+      <p><span class="tag red">Expensive cross-region</span> <span class="tag orange">Bursty</span></p>
+    </div>
+  </div>
+
+  <h2 id="s2-icloud">iCloud Services — What Consumes Resources</h2>
+  <p>You don't need to be an iCloud expert, but knowing what services exist helps you talk concretely about forecasting demand. Each service has a different resource profile.</p>
+
+  <table>
+    <thead>
+      <tr><th>Service</th><th>Primary Resource</th><th>Demand Pattern</th><th>Scaling Challenge</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>iCloud Photos</strong></td>
+        <td>Storage, Network</td>
+        <td>Steady growth + spikes (holidays, events). Users constantly upload but rarely delete</td>
+        <td>Storage only grows. Must replicate across regions for redundancy</td>
+      </tr>
+      <tr>
+        <td><strong>iCloud Backup</strong></td>
+        <td>Storage, Compute, Network</td>
+        <td>Strong diurnal pattern (overnight backups). Massive spike during iPhone launches (new device setup restores)</td>
+        <td>iPhone launch = millions of new backups within 72 hours</td>
+      </tr>
+      <tr>
+        <td><strong>iCloud Drive</strong></td>
+        <td>Storage, Compute</td>
+        <td>Business-hours heavy. Grows with user base and storage plan upgrades</td>
+        <td>File sync requires fast conflict resolution across devices</td>
+      </tr>
+      <tr>
+        <td><strong>iCloud Mail</strong></td>
+        <td>Compute, Storage</td>
+        <td>Business-hours heavy, holiday marketing spikes</td>
+        <td>Real-time delivery expectations; spam filtering is compute-intensive</td>
+      </tr>
+      <tr>
+        <td><strong>Siri / ML Services</strong></td>
+        <td>GPU/Compute</td>
+        <td>Highly bursty — usage spikes when people are awake and active</td>
+        <td>GPU capacity is expensive and has long procurement lead times</td>
+      </tr>
+      <tr>
+        <td><strong>iCloud Private Relay</strong></td>
+        <td>Network, Compute</td>
+        <td>Proportional to web browsing activity</td>
+        <td>Latency-sensitive; must be close to users geographically</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="bridge">
+    <div class="bridge-title">Bridge to Your Experience</div>
+    <p style="margin:0">This table is your "product catalog." Just like at Walmart where different SKUs have different storage profiles (frozen vs. ambient), velocity patterns (staples vs. seasonal), and handling constraints (hazmat, high-value), each iCloud service has a distinct resource profile, demand pattern, and provisioning constraint. Your forecasting system needs to handle this heterogeneity — <em>exactly</em> as your Walmart model handled heterogeneous SKUs.</p>
+  </div>
+
+  <h2 id="s2-why-regions">Why Regions and Multi-Region Design Matter</h2>
+  <p>The interviewer is specifically asking about a system that works "across regions and clusters." Here are the four reasons multi-region design is essential for iCloud — understand all four, because any could come up as a follow-up question.</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Latency</h4>
+      <p>Physics is non-negotiable. Light takes ~67ms to travel from New York to London through fiber. A user in Tokyo accessing a server in Virginia will experience at minimum ~150ms of network delay. Multiply by several round trips for a typical API call and iCloud feels sluggish. Solution: serve users from the nearest region. Your provisioning engine must place capacity where users are.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Data Sovereignty & Compliance</h4>
+      <p>The EU's GDPR requires that personal data of EU residents can be stored and processed only in compliant locations. China has similar data localization laws. Your optimization model must include <strong>hard constraints</strong> that prevent certain users' data from being placed in or migrated to non-compliant regions. This is a constraint in the MIP, not a soft objective.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Fault Tolerance / Disaster Recovery</h4>
+      <p>If all of iCloud's infrastructure were in a single building and that building lost power, every Apple device user on Earth would be affected. Multi-region design means that if US-West experiences a major outage (earthquake, power grid failure), US-East and Europe can absorb the traffic. This is the "N+1 across regions" constraint: every region must have a designated overflow partner with pre-provisioned headroom.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Cost Optimization</h4>
+      <p>Power costs, land costs, labor costs, and tax incentives vary dramatically across geographies. A data center in Oregon (cheap hydroelectric power) costs significantly less to operate than one in central London. Your MIP should include per-region cost coefficients. This is identical to how your Walmart model had per-DC operating costs influencing import routing.</p>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <div class="card-title">Apple-Specific Note — Sustainability</div>
+    <p style="margin:0">The job description explicitly mentions "environmental sustainability." Apple runs all its data centers on 100% renewable energy and publishes annual environmental progress reports. In your interview, add a sustainability dimension to your optimization: include a carbon intensity coefficient per region in the MIP's cost function, or add a constraint that prioritizes regions powered by renewables. This shows you've read the JD carefully and understand Apple's values.</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: DISTRIBUTED SYSTEMS -->
+<!-- ============================================================ -->
+<div class="section" id="s3">
+  <span class="section-number">SECTION 3 OF 6</span>
+  <h1>Distributed Systems <span class="thin">Core Concepts</span></h1>
+  <p class="lead">You need to be conversational — not expert-level — in about 15 distributed systems concepts. This section covers the ones most likely to come up, with explanations grounded in analogies to systems you already understand.</p>
+
+  <h2 id="s3-scaling">Scaling and Load Balancing</h2>
+
+  <h3>Horizontal vs. Vertical Scaling</h3>
+  <p>There are two ways to handle more load. <strong>Vertical scaling</strong> means making a single machine bigger — more CPU cores, more RAM, faster storage. This is simple but has a hard ceiling (you can't buy a CPU with a million cores) and creates a single point of failure. <strong>Horizontal scaling</strong> means adding more machines and distributing the work across them. This is how cloud-scale systems work.</p>
+
+  <p>Nearly everything in your iCloud design should be horizontally scalable. The forecasting service, the optimization solver, the data pipeline, the monitoring system — all should be designed so that adding more instances increases throughput. The main exception is the MIP solver itself, which is inherently hard to parallelize (though you can decompose the problem by region).</p>
+
+  <div class="bridge">
+    <div class="bridge-title">Bridge to Your Experience</div>
+    <p style="margin:0">You've done this implicitly. Your Walmart import model routes through multiple DCs (horizontal) rather than building one giant warehouse (vertical). Your billion-scale graph work at PNNL used Spark to distribute computation across a cluster — that's horizontal scaling of data processing.</p>
+  </div>
+
+  <h3>Load Balancing</h3>
+  <p>When you have multiple servers (or clusters, or regions), a load balancer decides which one handles each incoming request. This is the traffic cop of distributed systems.</p>
+
+  <table>
+    <thead>
+      <tr><th>Strategy</th><th>How It Works</th><th>When to Use</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Round Robin</strong></td>
+        <td>Requests go to servers 1, 2, 3, 1, 2, 3, ...</td>
+        <td>Simple, works when all servers are equal and all requests are similar</td>
+      </tr>
+      <tr>
+        <td><strong>Least Connections</strong></td>
+        <td>Send to whichever server currently has the fewest active requests</td>
+        <td>When requests have varying processing times</td>
+      </tr>
+      <tr>
+        <td><strong>Geographic / Latency-based</strong></td>
+        <td>Route users to the nearest region (DNS-based, using anycast)</td>
+        <td>Global services like iCloud — users in Tokyo hit APAC, users in London hit Europe</td>
+      </tr>
+      <tr>
+        <td><strong>Weighted</strong></td>
+        <td>Assign weights to servers/regions (e.g., US-West gets 40%, US-East gets 35%, Europe gets 25%)</td>
+        <td>When regions have different capacities. <strong>Your provisioning engine adjusts these weights.</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Consistent Hashing</strong></td>
+        <td>Hash the user ID to determine which server handles them — the same user always goes to the same server</td>
+        <td>When you need session affinity or want to optimize caching (user's data is already cached on that server)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>For iCloud, you'd use a combination: geographic routing at the region level (DNS-based), weighted round-robin at the cluster level (your optimizer sets the weights based on available capacity), and consistent hashing at the service level (so a user's data is always cached on the same set of nodes).</p>
+
+  <h2 id="s3-data">Data Management: Replication and Sharding</h2>
+
+  <h3>Replication</h3>
+  <p>Replication means keeping copies of data on multiple machines (or in multiple regions). This serves two purposes: <strong>availability</strong> (if one copy is destroyed, others survive) and <strong>performance</strong> (serve reads from whichever copy is closest to the user).</p>
+
+  <p>There are two main architectures:</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Leader-Follower (Primary-Replica)</div>
+      <p>One node is the "leader" and accepts all writes. It then replicates changes to follower nodes that serve read requests. This is simpler and guarantees write consistency, but the leader is a bottleneck and a single point of failure (mitigated by automatic leader election if the leader fails).</p>
+      <p><strong>For iCloud:</strong> Good for services where writes happen in one region and reads happen globally (e.g., user updates their iCloud settings in the US, and the change propagates to all regions).</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Multi-Leader (Multi-Primary)</div>
+      <p>Multiple nodes accept writes independently, then sync with each other. More complex because of potential <strong>write conflicts</strong> (user edits a document on both their phone and laptop simultaneously). Requires conflict resolution strategies (last-writer-wins, merge, or custom resolution).</p>
+      <p><strong>For iCloud:</strong> Necessary for services like iCloud Drive and Notes where users in different regions might edit the same data from different devices simultaneously.</p>
+    </div>
+  </div>
+
+  <h3>Sharding (Partitioning)</h3>
+  <p>When you have more data than fits on a single machine (iCloud stores billions of users' photos — that's exabytes of data), you split the data across many machines. This is <strong>sharding</strong>.</p>
+
+  <p>The critical decision is the <strong>shard key</strong> — how you decide which machine holds which data:</p>
+
+  <ul>
+    <li><strong>By user ID:</strong> All of User #12345's data lives on Shard C. Simple, ensures all of one user's data is co-located. This is the most common approach for consumer services like iCloud.</li>
+    <li><strong>By region:</strong> All EU users' data lives on EU shards. This naturally satisfies data sovereignty requirements.</li>
+    <li><strong>By service:</strong> All Photos data on one set of shards, all Mail data on another. Good for services with very different storage profiles.</li>
+  </ul>
+
+  <p>In practice, iCloud likely uses a combination: shard by region first (for sovereignty and latency), then by user ID within each region (for load distribution).</p>
+
+  <div class="card warning">
+    <div class="card-title">The Hot Shard Problem</div>
+    <p style="margin:0">If one shard gets disproportionately more traffic (a celebrity with millions of iCloud-shared photos, or a corporate account with massive data volumes), that shard becomes a bottleneck. This is the cloud equivalent of a single store receiving disproportionate demand. Solutions include: re-sharding (splitting the hot shard into smaller pieces), request rate limiting, or caching popular content on a CDN so requests never reach the origin shard.</p>
+  </div>
+
+  <h2 id="s3-reliability">Reliability and Fault Tolerance</h2>
+
+  <h3>The Concept of "Nines"</h3>
+  <p>Reliability is expressed as a percentage of uptime, commonly called "nines":</p>
+
+  <table>
+    <thead>
+      <tr><th>Availability</th><th>Downtime per Year</th><th>Downtime per Month</th><th>Typical Target</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>99% ("two nines")</td><td>3.65 days</td><td>7.3 hours</td><td>Internal tools</td></tr>
+      <tr><td>99.9% ("three nines")</td><td>8.77 hours</td><td>43.8 minutes</td><td>Standard SaaS</td></tr>
+      <tr><td>99.95%</td><td>4.38 hours</td><td>21.9 minutes</td><td>Premium cloud services</td></tr>
+      <tr><td>99.99% ("four nines")</td><td>52.6 minutes</td><td>4.38 minutes</td><td>Critical infrastructure (likely iCloud's target)</td></tr>
+      <tr><td>99.999% ("five nines")</td><td>5.26 minutes</td><td>26.3 seconds</td><td>Payment systems, emergency services</td></tr>
+    </tbody>
+  </table>
+
+  <p>Each additional "nine" is exponentially harder and more expensive to achieve. This is directly relevant to your optimization model: the SLA target determines how much headroom (safety stock) you need to provision. Going from 99.9% to 99.99% might require 2-3x more redundancy, which dramatically increases cost. This tradeoff — cost vs. reliability — is central to the interview problem.</p>
+
+  <h3>Redundancy Patterns</h3>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">N+1 Redundancy</div>
+      <p>If you need N servers to handle peak load, provision N+1. If any single server fails, the remaining N can still handle the full load. This is the minimum viable redundancy and is standard for most services.</p>
+      <p><strong>MIP translation:</strong> \(\text{capacity}[c] \geq \text{peak\_demand}[c] + 1\)</p>
+    </div>
+    <div class="card">
+      <div class="card-title">N+2 or 2N Redundancy</div>
+      <p>For critical services, provision even more headroom. 2N means you double everything — full mirroring. This is expensive but provides very high availability.</p>
+      <p><strong>When to use:</strong> Core iCloud services like Backup and Photos storage. Mention in the interview that the redundancy level is a parameter, not a constant — it varies by service criticality.</p>
+    </div>
+  </div>
+
+  <h3>Failure Modes and Blast Radius</h3>
+  <p><strong>Blast radius</strong> is how much of the system is affected when something fails. Good architecture minimizes blast radius by isolating failures:</p>
+
+  <ul>
+    <li>A single server fails → only requests on that server are affected (seconds to recover via load balancer health checks)</li>
+    <li>A rack fails → all servers in that rack go down, but other racks in the cluster absorb the load</li>
+    <li>An AZ fails → all clusters in that AZ go down, but other AZs in the region handle the traffic</li>
+    <li>A region fails → all AZs in that region go down, other regions must absorb (this is the worst case your system must handle)</li>
+  </ul>
+
+  <p>Your provisioning engine's headroom must account for each failure mode. The standard is to survive the loss of any single AZ without SLA violation — this is the "fault tolerance constraint" in your MIP.</p>
+
+  <h2 id="s3-cap">CAP Theorem, SLAs, and Consistency</h2>
+
+  <h3>CAP Theorem — Keep It Simple</h3>
+  <p>The CAP theorem says that in the presence of a network partition (network split between data centers), a distributed system must choose between:</p>
+
+  <ul>
+    <li><strong>Consistency:</strong> Every read receives the most recent write. All users see the same version of the data.</li>
+    <li><strong>Availability:</strong> Every request receives a response, even if it might not be the most recent version.</li>
+  </ul>
+
+  <p>You can't have both during a partition. For iCloud:</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Choose Availability (AP)</div>
+      <p>iCloud Photos, iCloud Drive, Notes — it's better for users to see a slightly stale version of their photos than to get an error. Resolve conflicts later (eventual consistency).</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Choose Consistency (CP)</div>
+      <p>iCloud Keychain (passwords), billing/payment state, account authentication — you must never serve stale or conflicting data. Better to return an error than serve wrong passwords.</p>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <div class="card-title">How to Discuss CAP in the Interview</div>
+    <p style="margin:0">Don't lecture about the theorem. Just say: "Different iCloud services have different consistency requirements. Photo storage can tolerate eventual consistency — I'd use an AP-oriented design where all regions can accept writes independently and sync asynchronously. But account authentication needs strong consistency — that's a CP design where writes go through a single leader and replicas might be briefly unavailable during a partition. My provisioning engine needs to account for this because CP services require more compute headroom for the consensus protocol overhead."</p>
+  </div>
+
+  <h3>SLAs, SLOs, and SLIs</h3>
+  <p>These three terms form the reliability framework for cloud services. They come up constantly in system design interviews.</p>
+
+  <div class="step">
+    <div class="step-num">SLI</div>
+    <div class="step-content">
+      <p><strong>Service Level Indicator</strong> — the actual metric you measure. Examples: "p99 latency for iCloud Photos API is 180ms" or "error rate for iCloud Backup is 0.02%." These are the signals your monitoring layer collects and your forecasting system might predict.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">SLO</div>
+    <div class="step-content">
+      <p><strong>Service Level Objective</strong> — the internal target for your SLI. "We target p99 latency &lt; 200ms for Photos" or "We target 99.95% availability for Backup." SLOs are set tighter than the external SLA to give you a buffer. This is exactly like setting an internal fill rate target of 98% when your customer-facing promise is 95%.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">SLA</div>
+    <div class="step-content">
+      <p><strong>Service Level Agreement</strong> — the external, contractual promise. If Apple promises iCloud has 99.9% uptime and they miss it, there might be service credits or reputational damage. <strong>Your provisioning engine's job is to ensure SLOs are met, which in turn ensures the SLA is never violated.</strong></p>
+    </div>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">Bridge to Your Experience</div>
+    <p style="margin:0">At Walmart, your equivalent was: SLI = actual measured fill rate, SLO = internal target fill rate (higher than customer promise), SLA = customer-facing service promise. Your eCommerce KPI forecasting work — building predictive models for fulfillment metrics with SHAP interpretability — is functionally identical to building SLI prediction models for cloud services.</p>
+  </div>
+
+  <h2 id="s3-infra">Infrastructure Building Blocks — The Components on Your Whiteboard</h2>
+
+  <p>When you draw the architecture diagram, you'll reference specific infrastructure components by name. You don't need to be an expert on any of these, but you need to know what each one does, why you chose it, and where it sits in the architecture. Here are the seven components most likely to appear on your whiteboard, organized by where they show up in the data flow.</p>
+
+  <h3>Message Queues — Kafka</h3>
+
+  <div class="card">
+    <div class="card-title">Apache Kafka</div>
+    <p><strong>What it is:</strong> A distributed event streaming platform. Think of it as a durable, ordered, high-throughput pipe that decouples data producers (services emitting metrics) from data consumers (your forecasting pipeline, anomaly detectors, dashboards).</p>
+    <p><strong>Why Kafka and not a simple queue:</strong> Kafka retains messages for a configurable period (days or weeks), so multiple consumers can read the same stream independently, at their own pace. Your short-term forecaster reads the same Kafka topic as your anomaly detector — they don't interfere with each other. It also handles backpressure gracefully: if your Flink consumer falls behind, messages are buffered in Kafka rather than dropped.</p>
+    <p><strong>Where it sits in your architecture:</strong> Between the data sources and the data pipeline layer. Every infrastructure metric (CPU, memory, storage, network per node, collected every 15 seconds) is published to a Kafka topic. Flink reads from Kafka for real-time processing; Spark reads from Kafka (or a downstream data lake) for batch processing.</p>
+    <p><strong>Key terms to know:</strong> <em>Topics</em> (named channels — one per metric type or service), <em>partitions</em> (parallelism within a topic — partition by cluster ID for locality), <em>consumer groups</em> (each group independently reads the full stream — your forecaster and your anomaly detector are separate consumer groups).</p>
+    <p><strong>If asked "why not RabbitMQ?":</strong> RabbitMQ is a traditional message broker that deletes messages once consumed. Kafka retains them, enabling replay (useful for retraining models on historical data) and multiple independent consumers. At iCloud's scale (millions of metric data points per second), Kafka's throughput and durability are essential.</p>
+  </div>
+
+  <h3>Stream Processing — Apache Flink</h3>
+
+  <div class="card">
+    <div class="card-title">Apache Flink</div>
+    <p><strong>What it is:</strong> A distributed stream processing engine that reads from Kafka and computes real-time aggregations, transformations, and detections with exactly-once processing guarantees.</p>
+    <p><strong>Where it sits:</strong> In the streaming path of the data pipeline layer. Flink reads raw metrics from Kafka, computes rolling aggregates (5-minute average CPU per cluster, hourly request rate per service), detects anomalies (sudden spike in error rate), and writes processed features to the feature store for the short-term forecaster.</p>
+    <p><strong>Why it matters for your system:</strong> The short-term forecaster needs up-to-date features (e.g., "what was the average CPU across US-West clusters in the last 5 minutes?"). Flink computes these in real-time with low latency (sub-second). Without it, you'd have to wait for batch processing — too slow for auto-scaling decisions.</p>
+    <p><strong>If asked "why not Spark Streaming?":</strong> Spark Streaming uses micro-batches (process every few seconds), while Flink is true event-at-a-time processing with lower latency. For auto-scaling decisions where seconds matter, Flink is the better fit. Spark is still used for the batch path (training data prep, historical aggregations).</p>
+  </div>
+
+  <h3>Caching — Redis</h3>
+
+  <div class="card">
+    <div class="card-title">Redis</div>
+    <p><strong>What it is:</strong> An in-memory key-value store. Data lives in RAM, so reads are sub-millisecond — orders of magnitude faster than hitting a database on disk.</p>
+    <p><strong>Where it sits in your architecture:</strong> Two places:</p>
+    <ul>
+      <li><strong>Feature store cache:</strong> The feature store has a Redis layer for online serving. When the short-term forecaster needs the latest features for a cluster, it reads from Redis (sub-millisecond) rather than querying the underlying database (10-100ms). Features are written to Redis by Flink as they're computed.</li>
+      <li><strong>Forecast result cache:</strong> The auto-scaler queries the forecaster frequently ("what's the predicted demand for US-West Photos in the next hour?"). Rather than re-running inference every time, the latest forecast is cached in Redis with a short TTL (e.g., 5 minutes). Multiple auto-scaler instances across clusters can read the same cached forecast.</li>
+    </ul>
+    <p><strong>Redis vs. Memcached:</strong> Both are in-memory caches. Redis supports richer data structures (sorted sets, hashes, lists) and persistence options. Memcached is simpler and slightly faster for pure key-value lookups. For your system, Redis is the better choice because you may want to store structured feature vectors, not just flat values. But if the interviewer asks, either works — the choice is not critical to the design.</p>
+    <p><strong>If asked "what if Redis goes down?":</strong> The feature store has a fallback path — read from the underlying database (slower but functional). The system degrades gracefully: auto-scaling decisions are slightly delayed, not lost. This is a good example of the availability-over-consistency principle for non-critical reads.</p>
+  </div>
+
+  <h3>Databases — Time-Series DB and Relational DB</h3>
+
+  <div class="card">
+    <div class="card-title">Time-Series Database (Prometheus / InfluxDB / Apple internal)</div>
+    <p><strong>What it is:</strong> A database optimized for storing and querying time-stamped metric data. Think: "give me the CPU utilization of Cluster A for every 15-second interval over the last 30 days."</p>
+    <p><strong>Where it sits:</strong> This is the persistent storage behind your metrics collection. Raw infrastructure metrics flow from the nodes → Kafka → time-series DB. The batch pipeline reads historical data from here for training the medium and long-term forecasters.</p>
+    <p><strong>Why not a regular database?</strong> Time-series data has special access patterns: writes are always append-only (new timestamps), reads are almost always range queries over time, and old data can be downsampled (keep 15-second granularity for the last week, 5-minute granularity for the last year). Time-series databases are optimized for exactly this: columnar storage for compression, time-based indexing, and automatic downsampling/retention policies.</p>
+    <p><strong>Sharding strategy:</strong> Shard by cluster ID or region. Each region's metrics stay on local shards, which aligns with data locality and reduces cross-region query traffic.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Relational Database (PostgreSQL / MySQL)</div>
+    <p><strong>What it is:</strong> A traditional SQL database for storing structured configuration and state data.</p>
+    <p><strong>Where it sits:</strong> Stores the non-time-series data your system needs: the MIP's constraint parameters (per-region costs, power limits, SLA targets), the optimizer's output (current target allocation per cluster), the current state of provisioned infrastructure, and the reconciliation parameters. This is a much smaller dataset — thousands of rows, not billions of time-series points.</p>
+    <p><strong>Why mention it:</strong> It shows the interviewer you recognize that not everything is a time-series problem. The optimizer's configuration and decision output needs ACID guarantees (you don't want a half-written allocation plan), which a relational DB provides.</p>
+  </div>
+
+  <h3>Load Balancers</h3>
+
+  <div class="card">
+    <div class="card-title">Load Balancers (L4 / L7)</div>
+    <p><strong>Already covered in detail in the Scaling section above</strong>, but here's how they fit in the architecture:</p>
+    <ul>
+      <li><strong>Global load balancer (DNS-based / Anycast):</strong> Sits in front of all regions. Routes users to the nearest healthy region. Your optimizer adjusts region weights via the execution layer. This is where geographic routing, failover, and traffic shifting happen.</li>
+      <li><strong>Regional load balancer (L7 — HTTP-aware):</strong> Within each region, distributes requests across clusters and service instances. Performs health checks (if a pod fails, stop sending traffic to it). Implements the drain-before-kill pattern for graceful scale-down.</li>
+      <li><strong>Service mesh (optional depth):</strong> For inter-service communication (e.g., the Photos API calling the Storage backend), a service mesh like Istio or Envoy provides load balancing, retry logic, and circuit breaking between microservices. Mention only if asked.</li>
+    </ul>
+    <p><strong>Connection to your optimizer:</strong> The optimizer's load balancing weights \(w_{s,r,t}\) are applied by updating the global load balancer's routing rules. This is one of the fastest provisioning actions (seconds to propagate) as covered in the Decision Propagation section.</p>
+  </div>
+
+  <h3>Orchestration — Kubernetes</h3>
+
+  <div class="card">
+    <div class="card-title">Kubernetes (K8s)</div>
+    <p><strong>What it is:</strong> A container orchestration platform that manages the lifecycle of your services — deploying, scaling, and healing containers across a cluster of machines.</p>
+    <p><strong>Key concepts (just enough for the interview):</strong></p>
+    <ul>
+      <li><strong>Pod:</strong> The smallest deployable unit — one or more containers running together. Your forecasting service, your auto-scaler, your anomaly detector — each runs as pods.</li>
+      <li><strong>Deployment:</strong> Manages a set of identical pods. "Run 10 replicas of the short-term-forecaster pod." Kubernetes ensures exactly 10 are always running; if one crashes, it's replaced automatically.</li>
+      <li><strong>Horizontal Pod Autoscaler (HPA):</strong> Watches a metric (CPU, custom metric from your forecaster) and adjusts the number of pod replicas. This is the reactive auto-scaling mechanism discussed in Section 5.</li>
+      <li><strong>Node:</strong> A physical or virtual machine in the cluster. Pods are scheduled onto nodes. When all nodes are full, the <strong>Cluster Autoscaler</strong> provisions new nodes (VMs).</li>
+      <li><strong>Namespace / Resource Quotas:</strong> Isolate resources per service or team. You can set limits: "the Photos service can use at most 5000 CPU cores in this cluster." This ties directly into your optimizer's per-service capacity allocation.</li>
+    </ul>
+    <p><strong>Where it sits:</strong> The execution and orchestration layer. When the auto-scaler or capacity planner says "add 200 pods to Cluster A," Kubernetes is the system that actually creates those pods, schedules them onto nodes, and connects them to the load balancer.</p>
+  </div>
+
+  <h3>CDN — Content Delivery Network</h3>
+
+  <div class="card">
+    <div class="card-title">CDN (Content Delivery Network)</div>
+    <p><strong>What it is:</strong> A globally distributed network of edge servers that cache and serve content close to users. For iCloud, the CDN handles static and semi-static content (photo thumbnails, cached documents, public assets) so that requests never need to reach the origin data center.</p>
+    <p><strong>Where it sits:</strong> In front of everything — between the user's device and your regional data centers. The CDN is the first layer that absorbs demand. A well-configured CDN can handle 60-80% of read traffic without touching origin servers, dramatically reducing the compute and network demand that your forecaster needs to predict.</p>
+    <p><strong>Why it matters for your system:</strong> Your forecasting model should account for the CDN's cache hit rate. If the CDN absorbs 70% of Photos read traffic, your origin cluster only sees 30%. A change in CDN configuration (e.g., shorter TTLs, cache purge) can suddenly increase origin traffic — the forecaster needs this as an input signal. The optimizer should also consider CDN capacity (edge node count, cache storage per edge location) as a provisioning variable.</p>
+  </div>
+
+  <h3>How They All Connect — Quick Reference</h3>
+
+  <div class="card accent">
+    <div class="card-title">Component Map to Architecture Layers</div>
+    <table>
+      <thead>
+        <tr><th>Architecture Layer</th><th>Components Used</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Data Sources → Pipeline</strong></td><td>Kafka (message transport), Flink (stream processing), Spark (batch processing)</td></tr>
+        <tr><td><strong>Feature Store</strong></td><td>Redis (online cache) + Time-series DB (offline storage) + Relational DB (configuration)</td></tr>
+        <tr><td><strong>Forecasting Engine</strong></td><td>Model serving (custom Python/C++ services running as K8s pods), reading from Redis</td></tr>
+        <tr><td><strong>Optimization Engine</strong></td><td>CPLEX/Gurobi (solver, runs as a batch K8s job), Relational DB (stores solutions)</td></tr>
+        <tr><td><strong>Execution &amp; Orchestration</strong></td><td>Kubernetes (pod/node management), Load Balancers (traffic routing), DNS (global routing)</td></tr>
+        <tr><td><strong>Monitoring &amp; Feedback</strong></td><td>Time-series DB (metric storage), Grafana/custom dashboards, alerting (PagerDuty-style)</td></tr>
+        <tr><td><strong>User-Facing Edge</strong></td><td>CDN (edge caching), Global Load Balancer (geographic routing)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: FORECASTING PIPELINE -->
+<!-- ============================================================ -->
+<div class="section" id="s4">
+  <span class="section-number">SECTION 4 OF 6</span>
+  <h1>Forecasting <span class="thin">Pipeline Design</span></h1>
+  <p class="lead">This is your home turf. This section shows you how to translate your Walmart forecasting architecture into cloud resource demand forecasting — component by component. Be ready to go deep here, because the interviewer will likely drill into this given your background.</p>
+
+  <h2 id="s4-what">What Exactly You're Forecasting</h2>
+
+  <p>The forecasting system predicts future demand for each resource type, in each location, at multiple time horizons. The outputs feed directly into the provisioning engine. Let's be specific about what "demand" means in each case:</p>
+
+  <table>
+    <thead>
+      <tr><th>Resource</th><th>Metric to Forecast</th><th>Unit</th><th>Granularity</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Compute</strong></td>
+        <td>CPU utilization, request rate (QPS)</td>
+        <td>CPU-seconds per hour, requests per second</td>
+        <td>Per service &times; per cluster &times; per hour</td>
+      </tr>
+      <tr>
+        <td><strong>Storage</strong></td>
+        <td>Total storage consumed, write rate (new data ingested)</td>
+        <td>Terabytes, GB per day</td>
+        <td>Per service &times; per region &times; per day</td>
+      </tr>
+      <tr>
+        <td><strong>Memory</strong></td>
+        <td>Peak RAM utilization</td>
+        <td>GB per node or per service</td>
+        <td>Per service &times; per cluster &times; per hour</td>
+      </tr>
+      <tr>
+        <td><strong>Network</strong></td>
+        <td>Ingress/egress bandwidth, inter-region transfer</td>
+        <td>Gbps</td>
+        <td>Per region pair &times; per hour</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Notice the varying granularities: compute and memory are highly dynamic (hourly patterns), while storage is a slower-moving cumulative metric (daily/weekly). Your forecasting system needs to handle both — just like at Walmart where fast-moving consumables need daily forecasts while furniture needs weekly/monthly.</p>
+
+  <h2 id="s4-data">Data Collection Layer</h2>
+
+  <p>Every forecast is only as good as its input data. Here's what the data collection layer must capture:</p>
+
+  <h3>Signals from Infrastructure (Endogenous)</h3>
+  <p>These are the time-series metrics that come directly from the infrastructure itself — the equivalent of point-of-sale data in retail.</p>
+
+  <ul>
+    <li><strong>Resource utilization metrics:</strong> CPU, memory, storage, network bandwidth per node, per cluster, per region. Collected every 15-60 seconds via a metrics system like Prometheus or a custom Apple time-series database.</li>
+    <li><strong>Request metrics:</strong> Requests per second, error rate, latency percentiles (p50, p95, p99) per service per cluster. These tell you how hard the system is working.</li>
+    <li><strong>Queue depths and backlogs:</strong> If a service's processing queue is growing, demand is outpacing supply — the cloud equivalent of a warehouse backlog.</li>
+  </ul>
+
+  <h3>Signals from Users and Business (Exogenous)</h3>
+  <p>These are external signals that help predict future demand — the equivalent of marketing calendars, weather data, and economic indicators in retail forecasting.</p>
+
+  <ul>
+    <li><strong>Device activation events:</strong> Each new iPhone/iPad/Mac sets up iCloud, creating a burst of backup, photo sync, and account creation traffic. Apple knows its device sales forecasts internally — this is a powerful leading indicator.</li>
+    <li><strong>Apple product calendar:</strong> iPhone launches, iOS updates, WWDC, new feature rollouts (e.g., launching a new iCloud-dependent feature). These are the "promotions" of the cloud world.</li>
+    <li><strong>User growth trends:</strong> New iCloud subscriptions, storage plan upgrades, geographic expansion into new markets.</li>
+    <li><strong>Seasonal patterns:</strong> Holiday season (more device gifts → activations), back-to-school, photo-heavy events (summer travel, December holidays).</li>
+  </ul>
+
+  <div class="card accent">
+    <div class="card-title">Data Pipeline Architecture</div>
+    <p>Two paths, running in parallel:</p>
+    <p><strong>Streaming path (Kafka → Flink / Spark Streaming):</strong> Ingests real-time infrastructure metrics. Computes rolling aggregates (5-minute average CPU, hourly request rate). Feeds the short-term forecaster and the anomaly detector. Latency target: seconds.</p>
+    <p style="margin:0"><strong>Batch path (Spark / internal equivalent of BigQuery):</strong> Daily and weekly ETL jobs that compute training features, aggregate historical patterns, and prepare training datasets. Feeds the medium and long-term forecasters. You know this world from GCP/BigQuery at Walmart.</p>
+  </div>
+
+  <h3>Feature Store</h3>
+  <p>You used Google Cloud Feature Store at Walmart — the same concept applies here. A centralized feature store ensures that the features used in training (offline) are identical to those used in inference (online). For the iCloud forecaster, the feature store holds pre-computed features like:</p>
+
+  <ul>
+    <li>Trailing 7-day / 30-day / 90-day average utilization per service per cluster</li>
+    <li>Year-over-year growth rate per region</li>
+    <li>Days-until-next-Apple-event indicator</li>
+    <li>Day-of-week and hour-of-day encodings</li>
+    <li>Per-user storage consumption growth rate (aggregated to region level)</li>
+  </ul>
+
+  <h2 id="s4-hierarchy">Hierarchical Forecasting — Your Superpower</h2>
+
+  <p>This is where you have a <em>decisive</em> advantage over other candidates. Most people who come from a pure distributed systems background will suggest "just forecast per cluster." You know from Walmart that this doesn't work — you need hierarchical forecasting with reconciliation.</p>
+
+  <h3>The Hierarchy for iCloud</h3>
+
+  <div class="diagram">Level 0 (Top):    Global total demand for each resource type
+                     │
+Level 1:            Per-Region demand
+                     │  (US-West, US-East, Europe, APAC, ...)
+                     │
+Level 2:            Per-AZ demand
+                     │  (US-West-AZ1, US-West-AZ2, ...)
+                     │
+Level 3:            Per-Cluster demand
+                     │  (US-West-AZ1-Cluster-A, ...)
+                     │
+Level 4 (Bottom):   Per-Service × Per-Cluster demand
+                     (Photos on US-West-AZ1-Cluster-A,
+                      Backup on US-West-AZ1-Cluster-A, ...)</div>
+
+  <h3>Why You Can't Just Forecast at One Level</h3>
+
+  <div class="two-col">
+    <div class="card danger">
+      <div class="card-title">Problem with bottom-up only</div>
+      <p>Forecasting at the bottom level (service &times; cluster) gives granular detail but has high variance — small clusters don't have enough data for stable forecasts. The noise at the bottom creates incoherent totals when you sum up. This is the same reason you can't forecast individual SKU &times; store and expect the national total to make sense.</p>
+    </div>
+    <div class="card danger">
+      <div class="card-title">Problem with top-down only</div>
+      <p>Forecasting at the top level (global total) gives stable predictions but loses all geographic and service-level nuance. You can't make cluster-level provisioning decisions from a global number. And proportionally splitting a global forecast ignores that different regions grow at different rates.</p>
+    </div>
+  </div>
+
+  <h3>The Solution: Reconciliation</h3>
+  <p>Forecast at every level of the hierarchy independently, then reconcile so that forecasts are coherent (the parts sum to the whole). You did exactly this at Walmart — building forecasts at SKU &times; store granularity for short/medium horizon, then aggregating and reconciling to lane/DC signals for long-term capacity planning.</p>
+
+  <p>The three reconciliation approaches:</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Top-Down</h4>
+      <p>Forecast the global total, then allocate proportionally to regions → AZs → clusters based on historical proportions. Simple but assumes the mix stays stable — which breaks during regional growth spurts or new market launches.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Bottom-Up</h4>
+      <p>Forecast each bottom-level node (service &times; cluster), then sum up to get higher-level totals. Captures local patterns well but is noisy and may produce unrealistic global totals.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Optimal Reconciliation (MinT / WLS)</h4>
+      <p>Forecast at all levels, then use a reconciliation method (like minimum trace reconciliation) to find the set of coherent forecasts that minimizes overall forecast error. This is the state-of-the-art approach and <strong>the one you should propose in the interview.</strong> You used this at Walmart — say so.</p>
+    </div>
+  </div>
+
+  <h2 id="s4-models">Model Selection by Horizon</h2>
+
+  <p>Different time horizons require different modeling approaches. This maps directly to your Walmart experience where short-term (daily replenishment), medium-term (monthly planning), and long-term (annual network design) used different models.</p>
+
+  <table>
+    <thead>
+      <tr><th>Horizon</th><th>Purpose</th><th>Model Choices</th><th>Retraining Frequency</th><th>Consumer</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Short-term</strong><br>(minutes to days)</td>
+        <td>Real-time auto-scaling decisions. "How many pods do we need in the next 2 hours?"</td>
+        <td>Online gradient boosting, ARIMA with exogenous variables, lightweight neural nets (LSTM/Transformer). Must be fast — inference latency &lt; 100ms.</td>
+        <td>Continuous or hourly</td>
+        <td>Auto-scaler</td>
+      </tr>
+      <tr>
+        <td><strong>Medium-term</strong><br>(weeks to months)</td>
+        <td>Procurement decisions and capacity planning. "How many servers should we order for Q3?"</td>
+        <td>LightGBM / XGBoost with rich feature engineering. Prophet for trend + seasonality decomposition. Ensemble of multiple models.</td>
+        <td>Weekly</td>
+        <td>Capacity planner, procurement team</td>
+      </tr>
+      <tr>
+        <td><strong>Long-term</strong><br>(quarters to years)</td>
+        <td>CapEx budgeting and data center construction. "Do we need a new data center in Southeast Asia by 2028?"</td>
+        <td>Trend decomposition + scenario modeling. Monte Carlo simulation for uncertainty. Simple but robust — fancy ML doesn't help at this horizon.</td>
+        <td>Quarterly</td>
+        <td>Strategic optimizer (MIP), finance team</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card success">
+    <div class="card-title">Interview Gold — Prediction Intervals, Not Point Forecasts</div>
+    <p>Always mention that your forecasts produce <strong>prediction intervals</strong>, not just point estimates:</p>
+    <p style="text-align:center;margin:12px 0">\(\hat{d}^{P10}_{t+\Delta} \;\leq\; \hat{d}^{P50}_{t+\Delta} \;\leq\; \hat{d}^{P90}_{t+\Delta}\)</p>
+    <p style="margin:0">The provisioning engine uses the \(\hat{d}^{P80}\) or \(\hat{d}^{P90}\) forecast for capacity decisions — provisioning for the optimistic case (\(P50\)) would lead to outages half the time. The spread \(\hat{d}^{P90} - \hat{d}^{P10}\) tells you how uncertain the forecast is, which maps directly to how much headroom (safety stock) to add: \(h_s \propto \hat{d}^{P90}_s - \hat{d}^{P50}_s\). This is exactly the same as using safety stock formulas based on demand variability in supply chain. If you explain this, you demonstrate both forecasting maturity and practical provisioning thinking.</p>
+  </div>
+
+  <h2 id="s4-feedback">Feedback Loop and Retraining</h2>
+
+  <p>A forecasting system without a feedback loop is incomplete. This is the part many candidates forget — and the part you should emphasize, given your experience building benchmarking and evaluation frameworks at Walmart.</p>
+
+  <h3>What to Monitor</h3>
+  <ul>
+    <li><strong>Forecast accuracy (MAPE, SMAPE, weighted quantile loss):</strong> Track per service, per region, per horizon. When accuracy degrades below a threshold, trigger retraining.</li>
+    <li><strong>Forecast bias:</strong> Is the model systematically over- or under-predicting? Persistent over-prediction wastes money (over-provisioning). Persistent under-prediction risks outages.</li>
+    <li><strong>Concept drift detection:</strong> Has the underlying demand pattern changed? (e.g., a new feature launches and changes the utilization profile of a service). Statistical tests like Page-Hinkley or ADWIN can detect this automatically.</li>
+    <li><strong>Feature importance drift:</strong> Has the relative importance of input features shifted? This might indicate a structural change in the system. You used SHAP at Walmart for interpretability — the same applies here.</li>
+  </ul>
+
+  <h3>Retraining Strategy</h3>
+  <p>For the short-term forecaster: continuous online learning or hourly retraining. For the medium-term forecaster: weekly batch retraining with the latest data. For the long-term forecaster: quarterly manual review with human-in-the-loop (finance and engineering leadership validate assumptions).</p>
+
+  <p>If drift is detected between scheduled retraining cycles, trigger an emergency retrain. This is the cloud equivalent of re-forecasting when a major supply chain disruption occurs (COVID, port closures, etc.).</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: OPTIMIZATION ENGINE -->
+<!-- ============================================================ -->
+<div class="section" id="s5">
+  <span class="section-number">SECTION 5 OF 6</span>
+  <h1>Resource Provisioning <span class="thin">& Optimization</span></h1>
+  <p class="lead">This section is where your MIP expertise shines. You'll learn to frame the iCloud capacity allocation problem as a formal optimization problem — using the same techniques you applied at Walmart with CPLEX, but with cloud-specific constraints and objectives.</p>
+
+  <h2 id="s5-formulation">The MIP Formulation</h2>
+  <p>In the interview, being able to write out a clean mathematical formulation — or at least describe it clearly — will set you apart from candidates who only speak at a conceptual level. Here's the complete formulation:</p>
+
+  <div class="card">
+    <h4>Sets and Indices</h4>
+    <div class="math-block">
+$$\begin{aligned}
+\mathcal{R} &= \text{set of regions} & (r \in \mathcal{R}) \\[4pt]
+\mathcal{C} &= \text{set of clusters} & (c \in \mathcal{C},\ c \subset r) \\[4pt]
+\mathcal{S} &= \text{set of services} & (s \in \mathcal{S}: \text{Photos, Backup, Mail, } \ldots) \\[4pt]
+\mathcal{K} &= \text{set of resource types} & (k \in \mathcal{K}: \text{CPU, Storage, RAM, Network}) \\[4pt]
+\mathcal{T} &= \text{set of time periods} & (t \in \mathcal{T}: \text{quarters or hours})
+\end{aligned}$$
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>Decision Variables</h4>
+    <div class="math-block">
+$$x_{r,k,t} \in \mathbb{Z}^+ \quad \text{— units of resource } k \text{ to provision in region } r \text{ at time } t$$
+<span class="math-comment">Integer for hardware purchases, continuous for VM allocation</span>
+
+$$y_{r,t} \in \{0, 1\} \quad \text{— 1 if we expand capacity in region } r \text{ at time } t$$
+<span class="math-comment">Binary; triggers fixed cost of expansion</span>
+
+$$w_{s,r,t} \in [0, 1] \quad \text{— fraction of traffic for service } s \text{ routed to region } r \text{ at time } t$$
+<span class="math-comment">Load balancing weights, continuous</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>Objective Function</h4>
+    <div class="math-block">
+<span class="math-label">Minimize</span>
+$$\underbrace{\sum_{r \in \mathcal{R}} \sum_{k \in \mathcal{K}} \sum_{t \in \mathcal{T}} c_{r,k} \cdot x_{r,k,t}}_{\text{hardware / VM cost}} \;+\; \underbrace{\sum_{r \in \mathcal{R}} \sum_{t \in \mathcal{T}} f_r \cdot y_{r,t}}_{\text{expansion fixed costs}}$$
+
+$$+\; \underbrace{\sum_{r \in \mathcal{R}} \sum_{k \in \mathcal{K}} \sum_{t \in \mathcal{T}} p_r \cdot x_{r,k,t}}_{\text{operating costs (power, cooling)}} \;+\; \underbrace{\sum_{r \in \mathcal{R}} \gamma_r \cdot E_r}_{\text{sustainability penalty}}$$
+
+$$+\; \underbrace{\sum_{s \in \mathcal{S}} \sum_{r \in \mathcal{R}} \sum_{t \in \mathcal{T}} M_s \cdot v_{s,r,t}}_{\text{SLA violation penalty (big-}M\text{)}}$$
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>Constraints</h4>
+    <div class="math-block">
+
+      <div class="constraint-group">
+        <span class="constraint-title">1. Demand Satisfaction</span>
+        <span class="math-comment">For each service \(s\), region \(r\), resource \(k\), time \(t\):</span>
+$$\text{capacity}_{r,k,t} \;\geq\; \hat{d}^{\,P90}_{s,r,k,t} \;+\; h_s$$
+        <span class="math-comment">Available capacity must exceed the P90 demand forecast plus headroom. Cloud equivalent of: \(\text{inventory} \geq \text{demand} + \text{safety stock}\).</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">2. SLA / Availability</span>
+        <span class="math-comment">For each service \(s\), region \(r\):</span>
+$$A_{s,r} \;\geq\; A^{\text{target}}_s$$
+        <span class="math-comment">Enforced via redundancy — enough spare capacity to survive any single-AZ loss.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">3. Fault Tolerance — AZ Loss</span>
+        <span class="math-comment">For each region \(r\), each AZ \(a \in r\), resource \(k\):</span>
+$$\sum_{c \,\in\, \mathcal{C}_r \setminus \mathcal{C}_a} \text{capacity}_{c,k} \;\geq\; d_{r,k}$$
+        <span class="math-comment">Even if AZ \(a\) fails completely, the remaining AZs can handle the full load.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">4. Data Sovereignty</span>
+        <span class="math-comment">For each user group \(g\) with a regional requirement:</span>
+$$\text{loc}(g) \;\in\; \mathcal{R}^{\text{allowed}}_g$$
+        <span class="math-comment">EU user data must reside in EU or approved regions. Hard constraint — no relaxation.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">5. Procurement Lead Time</span>
+        <span class="math-comment">For hardware purchases of resource type \(k\):</span>
+$$x_{r,k,t} \;\text{must be decided at or before}\; t - L_k$$
+        <span class="math-comment">Server procurement takes \(L_k \approx 8\text{–}16\) weeks. Decisions can't be retroactive.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">6. Budget</span>
+        <span class="math-comment">Per time period \(t\):</span>
+$$\sum_{r \in \mathcal{R}} \sum_{k \in \mathcal{K}} c_{r,k} \cdot x_{r,k,t} \;\leq\; B_t$$
+        <span class="math-comment">Annual CapEx budget is finite.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">7. Rack / Power Constraints</span>
+        <span class="math-comment">Per cluster \(c\), time \(t\):</span>
+$$\sum_{k \in \mathcal{K}} \pi_k \cdot x_{c,k,t} \;\leq\; P^{\max}_c$$
+        <span class="math-comment">Each cluster has a physical power limit \(P^{\max}_c\). Cannot exceed electrical capacity.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">8. Load Balancing</span>
+        <span class="math-comment">For each service \(s\), time \(t\):</span>
+$$\sum_{r \in \mathcal{R}} w_{s,r,t} = 1 \qquad \text{and} \qquad w_{s,r,t} \geq 0 \;\;\forall\, r$$
+        <span class="math-comment">Traffic weights must sum to 1 across regions.</span>
+      </div>
+
+      <div class="constraint-group">
+        <span class="constraint-title">9. Migration Rate Limits</span>
+        <span class="math-comment">For storage moves between regions \(r_1\) and \(r_2\), time \(t\):</span>
+$$m_{r_1 \to r_2, t} \;\leq\; \beta_{r_1, r_2}$$
+        <span class="math-comment">Network capacity and cost limit how fast you can rebalance storage across regions.</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">Bridge to Your Walmart MIP</div>
+    <p style="margin:0">This formulation is structurally identical to your Walmart import routing model. In that model: decision variables = flow of goods through ports → IDCs → RDCs; objective = minimize transportation cost; constraints = demand satisfaction at stores, capacity limits at DCs, port throughput limits, and service level requirements. The mathematical structure is the same — only the nouns change. <strong>In the interview, say this explicitly.</strong></p>
+  </div>
+
+  <h2 id="s5-strategic">Strategic Layer — Quarterly Capacity Planning</h2>
+
+  <p>The strategic optimization runs quarterly (or monthly) and makes the big, expensive, hard-to-reverse decisions. This is the MIP described above.</p>
+
+  <h3>What Decisions It Makes</h3>
+  <ul>
+    <li><strong>Hardware procurement:</strong> How many servers of each type to order for each region. These have 8-16 week lead times, so decisions must be made months ahead of need.</li>
+    <li><strong>Region expansion:</strong> Should we add capacity in a new region (e.g., build infrastructure in India or Brazil)? Binary decision with high fixed cost.</li>
+    <li><strong>Capacity rebalancing:</strong> Should we shift storage from an over-provisioned region to an under-provisioned one? Constrained by migration bandwidth.</li>
+    <li><strong>Retirement scheduling:</strong> When to decommission aging hardware — balancing replacement cost against maintenance cost and failure risk.</li>
+  </ul>
+
+  <h3>Solving the MIP</h3>
+  <p>For a problem of this scale (dozens of regions, hundreds of clusters, multiple resource types, multiple time periods), the MIP will have thousands to tens of thousands of variables and constraints. This is well within the capability of commercial solvers like CPLEX or Gurobi, which you've used at Walmart.</p>
+
+  <p>Practical tips to mention in the interview:</p>
+  <ul>
+    <li><strong>Decomposition by region:</strong> If the full MIP is too large, decompose it into per-region subproblems linked by inter-region constraints (Benders decomposition or Lagrangian relaxation). This is a technique used in large-scale supply chain optimization.</li>
+    <li><strong>Scenario-based stochastic optimization:</strong> Instead of using a single P90 demand forecast, solve the MIP under multiple demand scenarios (optimistic, baseline, pessimistic) and choose the solution that performs best across scenarios. This is robust optimization — mention it to show sophistication.</li>
+    <li><strong>Rolling horizon:</strong> Solve the MIP quarterly, but only commit to the first quarter's decisions. Re-solve next quarter with updated forecasts. This hedges against long-term forecast uncertainty.</li>
+  </ul>
+
+  <h2 id="s5-lp">LP Relaxation — When MIPs Are Too Slow</h2>
+
+  <p>Here's a practical reality the interviewer may probe: a full MIP with integer variables can take minutes to hours to solve, depending on problem size. That's fine for quarterly strategic planning, but what about decisions at a faster cadence — say, hourly or daily rebalancing of workloads across clusters? You can't wait 45 minutes for CPLEX to converge when you need an answer in seconds.</p>
+
+  <h3>What Is LP Relaxation?</h3>
+  <p>LP relaxation drops the integrality constraints from the MIP, allowing integer and binary variables to take continuous (fractional) values. The resulting Linear Program (LP) is dramatically faster to solve — typically polynomial time via simplex or interior-point methods, versus NP-hard for the MIP.</p>
+
+  <div class="math-block">
+    <span class="math-label">MIP → LP Relaxation</span>
+    <span class="math-comment">Original MIP integrality constraints:</span>
+$$x_{r,k,t} \in \mathbb{Z}^+ \qquad y_{r,t} \in \{0, 1\}$$
+    <span class="math-comment">Relaxed LP:</span>
+$$x_{r,k,t} \geq 0 \quad (x \in \mathbb{R}) \qquad 0 \leq y_{r,t} \leq 1 \quad (y \in \mathbb{R})$$
+    <span class="math-comment">The LP optimal value provides a <strong>lower bound</strong> on the MIP optimal value:</span>
+$$z^*_{\text{LP}} \;\leq\; z^*_{\text{MIP}}$$
+  </div>
+
+  <h3>When LP Relaxation Is Appropriate</h3>
+
+  <p>The key insight is that integrality matters most when decision units are <em>large and lumpy</em>. It matters least when units are small relative to the total.</p>
+
+  <table>
+    <thead>
+      <tr><th>Decision Cadence</th><th>Decision Granularity</th><th>Solver Choice</th><th>Why</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Quarterly</strong></td>
+        <td>Buy 200 servers for US-West</td>
+        <td><span class="tag purple">Full MIP</span></td>
+        <td>You can't buy 200.4 servers. Integrality matters. Solve time budget: hours is fine.</td>
+      </tr>
+      <tr>
+        <td><strong>Weekly / Monthly</strong></td>
+        <td>Allocate VM pools across regions</td>
+        <td><span class="tag purple">MIP</span> or <span class="tag blue">LP + rounding</span></td>
+        <td>VMs are somewhat granular but you're allocating hundreds. LP solution rounded to nearest integer is near-optimal. MIP feasible if problem is decomposed by region.</td>
+      </tr>
+      <tr>
+        <td><strong>Hourly</strong></td>
+        <td>Rebalance containers/pods across clusters</td>
+        <td><span class="tag blue">LP relaxation</span></td>
+        <td>Pods are small units — allocating 847.3 pods rounds trivially to 848. Solve time budget: seconds. LP gives near-integer solutions naturally.</td>
+      </tr>
+      <tr>
+        <td><strong>Minutes</strong></td>
+        <td>Adjust load balancer weights</td>
+        <td><span class="tag green">LP (naturally continuous)</span></td>
+        <td>Traffic weights \(w_{s,r,t}\) are already continuous variables — no relaxation needed. This is a pure LP.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Rounding Strategies After LP Relaxation</h3>
+  <p>When the LP produces fractional solutions for variables that should be integer, you need a rounding strategy. This is well-studied in OR:</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Simple Rounding (Ceiling)</h4>
+      <p>Round every fractional variable up: \(\lceil x^*_{\text{LP}} \rceil\). This guarantees feasibility (all demand constraints remain satisfied since you're provisioning more, not less) but slightly increases cost. For capacity provisioning this is the natural choice — you'd rather have one extra pod than one too few.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">Randomized Rounding</h4>
+      <p>Round each fractional variable probabilistically: \(x^*_{\text{LP}} = 47.7\) rounds to 48 with probability 0.7 and to 47 with probability 0.3. Provides provable approximation guarantees in expectation. More relevant for theoretical analysis than production use.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <h4 style="margin-top:0">LP-Guided MIP (Warm Start)</h4>
+      <p>Use the LP relaxation solution as a warm start for the MIP solver. The LP solution gives the solver a strong initial feasible region, dramatically reducing branch-and-bound search time. This is the best of both worlds: you get exact integer solutions, but the solver converges much faster. CPLEX and Gurobi both support warm starts natively.</p>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <div class="card-title">The Optimality Gap — How Good Is the LP Solution?</div>
+    <p>The LP relaxation gives you a lower bound \(z^*_{\text{LP}}\) and the rounded solution gives a feasible upper bound \(z^{\text{rounded}}\). The <strong>optimality gap</strong> tells you how far from optimal your practical solution is:</p>
+    <div style="text-align:center;margin:12px 0">
+$$\text{gap} = \frac{z^{\text{rounded}} - z^*_{\text{LP}}}{z^*_{\text{LP}}} \times 100\%$$
+    </div>
+    <p style="margin:0">In practice, for capacity allocation problems with many small units (pods, containers), this gap is often &lt;1%. That means the LP + ceiling approach gives you a solution within 1% of the true MIP optimum — at a fraction of the solve time. Mention this in the interview to show you understand the practical tradeoff between solution quality and computational budget.</p>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">Bridge to Your Experience</div>
+    <p style="margin:0">At Walmart, your CPLEX models likely hit solve-time limits on the largest instances. You've seen this tradeoff firsthand: sometimes you accept a solution with a 2% optimality gap because waiting for the provably optimal solution would miss the planning deadline. The same principle applies here — at hourly cadence, a near-optimal LP solution delivered in 5 seconds beats an optimal MIP solution delivered in 30 minutes.</p>
+  </div>
+
+  <h2 id="s5-tactical">Tactical Layer — Real-Time Auto-Scaling</h2>
+
+  <p>The tactical layer operates within the capacity envelope set by the strategic MIP. It makes minute-to-minute decisions about how to use existing resources. Think of it as daily replenishment operating within the inventory bought by the quarterly purchasing plan.</p>
+
+  <h3>Kubernetes Horizontal Pod Autoscaler (HPA) — The Basics</h3>
+  <p>In a Kubernetes-based infrastructure (which most modern cloud services use), workloads run in <strong>pods</strong> (containers). The Horizontal Pod Autoscaler watches a metric (typically CPU utilization) and automatically adds or removes pods:</p>
+
+  <div class="math-block">
+    <span class="math-label">Reactive Auto-Scaling Rule</span>
+
+$$\text{IF} \quad \bar{u}^{\text{CPU}}_{\Delta t=5\text{min}} > 0.75 \implies n_{\text{pods}} \leftarrow n_{\text{pods}} + 2$$
+
+$$\text{IF} \quad \bar{u}^{\text{CPU}}_{\Delta t=10\text{min}} < 0.30 \implies n_{\text{pods}} \leftarrow n_{\text{pods}} - 1$$
+
+    <span class="math-comment">This is the baseline. It works, but it's reactive — by the time CPU hits 75%, users may already be experiencing higher latency.</span>
+  </div>
+
+  <h3>Predictive Auto-Scaling — Your Value Add</h3>
+  <p>This is where your forecasting expertise directly improves the system. Instead of only reacting to current metrics, the auto-scaler uses short-term forecasts to <strong>pre-scale</strong> before demand arrives.</p>
+
+  <div class="math-block">
+    <span class="math-label">Predictive Auto-Scaling (Your Contribution)</span>
+
+$$\hat{d}_{t+\Delta} = f\!\left(\mathbf{x}_t,\; \mathbf{x}_{t-1},\; \ldots,\; \text{calendar features}\right) \quad \text{(short-term forecaster)}$$
+
+$$\text{IF} \quad \hat{d}_{t+\Delta} > 0.7 \cdot \text{capacity}_t \implies \text{pre-scale NOW}$$
+
+$$\text{IF event} \in \text{calendar}(t+\Delta) \implies \hat{d}_{t+\Delta} \leftarrow \hat{d}_{t+\Delta} \cdot \lambda_{\text{event}}$$
+
+    <span class="math-comment">where \(\lambda_{\text{event}}\) is a historical event multiplier (e.g., iPhone launch → 3.2x iCloud Backup demand). Resources are ready BEFORE users arrive. Same concept as pre-positioning inventory before a known demand surge.</span>
+  </div>
+
+  <p>The hybrid approach — predictive scaling as the primary mechanism, reactive scaling as the fallback — is the state of the art. Propose this in the interview and explain that the predictive component uses the same short-term forecaster from Section 4.</p>
+
+  <h3>Cross-Region Traffic Shifting</h3>
+  <p>When one region is approaching capacity limits and another has headroom, the tactical layer can shift traffic between regions by adjusting DNS weights or load balancer configuration. This is the cloud equivalent of lateral transfers between warehouses.</p>
+
+  <p>Constraints on traffic shifting:</p>
+  <ul>
+    <li><strong>Latency impact:</strong> Shifting a Tokyo user to US-West adds ~100ms latency — acceptable for batch operations, unacceptable for real-time services.</li>
+    <li><strong>Data locality:</strong> The user's data might be stored in APAC; serving them from US-West requires cross-region data access, which is slow and expensive.</li>
+    <li><strong>Data sovereignty:</strong> Can't shift EU user traffic to non-EU regions if data sovereignty applies.</li>
+  </ul>
+
+  <h2 id="s5-multi">Multi-Resource Co-Optimization</h2>
+  <p>This is a nuance that will impress the interviewer: resources are not independent. You can't provision CPU without also provisioning the memory and network bandwidth to support it. The MIP handles this via coupling constraints.</p>
+
+  <div class="card warning">
+    <div class="card-title">The Coupling Problem</div>
+    <p>Imagine you forecast that a cluster needs 1000 additional CPU cores. You provision them. But you forgot that each CPU core also needs ~4GB of RAM, ~100GB of storage, and ~1Gbps of network capacity for the workloads that will run on it. If the cluster doesn't have enough RAM, the extra CPUs sit idle — stranded capacity.</p>
+    <p style="margin:0">In supply chain terms: it's like shipping cereal to a store but not shipping milk. They're consumed together. Your MIP must enforce <strong>resource ratio constraints</strong> that ensure complementary resources are provisioned together.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="constraint-title">Resource Coupling Constraints</span>
+    <span class="math-comment">For each cluster \(c\), time period \(t\):</span>
+
+$$\begin{aligned}
+x^{\text{RAM}}_{c,t} &\;\geq\; x^{\text{CPU}}_{c,t} \cdot \alpha^{\text{RAM}}_{\,\mu(c)} \\[6pt]
+x^{\text{storage}}_{c,t} &\;\geq\; x^{\text{CPU}}_{c,t} \cdot \alpha^{\text{storage}}_{\,\mu(c)} \\[6pt]
+x^{\text{net}}_{c,t} &\;\geq\; x^{\text{CPU}}_{c,t} \cdot \alpha^{\text{net}}_{\,\mu(c)}
+\end{aligned}$$
+
+    <span class="math-comment">where \(\mu(c)\) is the service mix running on cluster \(c\), and \(\alpha\) values are the per-resource ratios. A Photos-heavy cluster has higher \(\alpha^{\text{storage}}\) than a Siri-heavy cluster.</span>
+  </div>
+
+  <p>This level of detail — recognizing that resources are coupled and the ratios depend on workload mix — is something that comes naturally from supply chain thinking (you'd never plan inventory for a burger restaurant by ordering buns without proportional patties). But many system design candidates miss it.</p>
+
+  <h2 id="s5-propagation">Decision Propagation — From Optimizer Output to Running Infrastructure</h2>
+
+  <p>Most system design candidates stop at "the optimizer decides what to provision." But there's a critical gap between <em>the optimizer says x</em> and <em>x is actually running and serving traffic</em>. This is the execution layer — and it's where real systems get messy. If the interviewer asks "okay, so now you have the optimal allocation — what happens next?", this is what you need to cover.</p>
+
+  <h3>The Decision Delta</h3>
+  <p>The optimizer's output is a target state. The current infrastructure is the actual state. The work to be done is the <strong>delta</strong> between the two:</p>
+
+  <div class="math-block">
+    <span class="math-label">Decision Delta</span>
+$$\Delta_{r,k,t} \;=\; x^{\text{target}}_{r,k,t} \;-\; x^{\text{current}}_{r,k,t}$$
+
+    <span class="math-comment">If \(\Delta > 0\): provision (scale up). If \(\Delta < 0\): decommission (scale down). If \(\Delta = 0\): no action needed.</span>
+
+    <span class="math-comment">The execution plan must translate this into a sequence of concrete operations:</span>
+
+$$\Delta_{r,k,t} \;\longrightarrow\; \bigl\{\text{order hardware},\;\text{spin up VMs},\;\text{deploy pods},\;\text{migrate data},\;\text{update DNS}\bigr\}$$
+  </div>
+
+  <h3>Propagation Delays at Each Layer</h3>
+  <p>Each type of provisioning action has a different latency. The optimizer must account for these delays — you can't assume decisions are instantaneous. This is directly analogous to lead times in supply chain, where different suppliers and transportation modes have different delivery times.</p>
+
+  <table>
+    <thead>
+      <tr><th>Action</th><th>Typical Latency</th><th>Reversibility</th><th>Analogy</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Scale pods/containers</strong> (within existing nodes)</td>
+        <td>Seconds to minutes</td>
+        <td><span class="tag green">Easily reversible</span></td>
+        <td>Reassigning shelf space within a store</td>
+      </tr>
+      <tr>
+        <td><strong>Spin up new VMs</strong> (within existing physical capacity)</td>
+        <td>1–5 minutes</td>
+        <td><span class="tag green">Reversible</span></td>
+        <td>Activating reserve pallet positions in a warehouse</td>
+      </tr>
+      <tr>
+        <td><strong>Update DNS / load balancer weights</strong></td>
+        <td>Seconds to propagate; minutes for global DNS TTL expiry</td>
+        <td><span class="tag green">Reversible</span></td>
+        <td>Redirecting delivery trucks to a different DC</td>
+      </tr>
+      <tr>
+        <td><strong>Provision new nodes</strong> (rack and configure bare-metal servers)</td>
+        <td>Hours to days (if hardware is on-site but not racked)</td>
+        <td><span class="tag orange">Slow to reverse</span></td>
+        <td>Opening a new section of a warehouse</td>
+      </tr>
+      <tr>
+        <td><strong>Migrate data between regions</strong></td>
+        <td>Hours to days (bandwidth-limited)</td>
+        <td><span class="tag red">Expensive to reverse</span></td>
+        <td>Transferring inventory between DCs</td>
+      </tr>
+      <tr>
+        <td><strong>Procure new hardware</strong></td>
+        <td>8–16 weeks</td>
+        <td><span class="tag red">Effectively irreversible</span></td>
+        <td>Ordering new warehouse construction</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card accent">
+    <div class="card-title">Implication for the Optimizer</div>
+    <p style="margin:0">The optimizer must be <strong>lead-time-aware</strong>. If the forecast says US-West needs 500 more servers in Q3, the procurement decision must be made in Q1 (given a 12-week lead time). But if the forecast says a cluster needs 200 more pods in 2 hours, that decision can be made now and executed in minutes. This is why the two-layer architecture (strategic MIP + tactical LP/auto-scaler) exists — they operate at different decision cadences matched to different propagation latencies.</p>
+  </div>
+
+  <h3>Partial Rollouts and Transient States</h3>
+  <p>In practice, provisioning doesn't happen atomically. Between the moment you start executing a delta and the moment the new state is fully live, the system is in a <strong>transient state</strong> where only part of the change has been applied. This is where things get dangerous.</p>
+
+  <h4>Problem 1: Capacity Gaps During Scale-Up</h4>
+  <p>Suppose the optimizer says: "add 300 pods to Cluster A and shift 20% of traffic from Cluster B to Cluster A." If the traffic shift happens before the pods are ready, Cluster A gets overwhelmed:</p>
+
+  <div class="math-block">
+    <span class="math-label">Dangerous Ordering</span>
+$$\underbrace{w_{s,A} \leftarrow w_{s,A} + 0.20}_{\text{traffic arrives immediately}} \quad \text{but} \quad \underbrace{x^{\text{pods}}_{A} \leftarrow x^{\text{pods}}_{A} + 300}_{\text{pods need 2 min to start}}$$
+
+    <span class="math-comment">For ~2 minutes, Cluster A is receiving 20% more traffic than it can handle → latency spike, potential SLA violation.</span>
+
+    <span class="math-label" style="margin-top:16px">Safe Ordering</span>
+$$x^{\text{pods}}_{A} \leftarrow x^{\text{pods}}_{A} + 300 \quad \xrightarrow{\text{wait for health checks}} \quad w_{s,A} \leftarrow w_{s,A} + 0.20$$
+
+    <span class="math-comment">Always provision capacity BEFORE shifting traffic. Resources first, traffic second.</span>
+  </div>
+
+  <h4>Problem 2: Data Locality Violations During Migration</h4>
+  <p>If you're migrating user data from Region A to Region B (to rebalance storage), there's a period where the data is in transit — it exists in A but not yet in B, or partially in both. During this window:</p>
+  <ul>
+    <li>Reads for migrating users must still hit Region A (the data isn't in B yet), even if the load balancer has already started routing those users to B</li>
+    <li>Writes are especially tricky — do they go to A (which is the source being drained) or B (which doesn't have the full dataset yet)?</li>
+    <li>If the migration fails midway, you need a rollback plan that doesn't lose data</li>
+  </ul>
+
+  <p>The standard solution is a <strong>two-phase migration</strong>:</p>
+
+  <div class="math-block">
+    <span class="math-label">Two-Phase Data Migration</span>
+    <span class="math-comment">Phase 1 — Replication (no traffic shift yet):</span>
+$$\text{data}_{B} \leftarrow \text{copy}(\text{data}_{A}) \quad \text{while} \quad w_{s,A} = 1.0,\; w_{s,B} = 0.0$$
+
+    <span class="math-comment">Phase 2 — Cutover (after replication is verified complete):</span>
+$$\text{verify: } \text{data}_{B} = \text{data}_{A} \quad \Longrightarrow \quad w_{s,B} \leftarrow 1.0,\; w_{s,A} \leftarrow 0.0$$
+
+    <span class="math-comment">Phase 3 — Cleanup (after cutover is stable):</span>
+$$\text{TTL expires} \quad \Longrightarrow \quad \text{delete}(\text{data}_{A})$$
+  </div>
+
+  <h4>Problem 3: Cascading Failures During Scale-Down</h4>
+  <p>Scale-down is riskier than scale-up. If the optimizer says "remove 100 pods from Cluster B," and you remove them all at once, you might:</p>
+  <ul>
+    <li>Kill active user sessions on those pods (requests in-flight get dropped)</li>
+    <li>Overwhelm remaining pods if the load balancer hasn't adjusted weights yet</li>
+    <li>Trigger health check failures that cause the auto-scaler to panic and scale back up, creating an oscillation loop</li>
+  </ul>
+
+  <h3>Graceful Rollout Strategies</h3>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Canary Rollout</div>
+      <p>Apply the delta to a small subset first (e.g., 5% of pods), observe metrics for a validation window (5–15 minutes), and only proceed to the full rollout if SLIs remain healthy. If the canary shows degradation, automatically roll back.</p>
+      <p>For provisioning changes: shift 2% of traffic to the new capacity, validate latency and error rates, then proceed in increments — 2% → 10% → 25% → 50% → 100%.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Drain-Before-Kill</div>
+      <p>Before removing a pod or node, mark it as "draining" — the load balancer stops sending new requests, but existing in-flight requests are allowed to complete. Only after the drain timeout (typically 30–60 seconds) is the pod actually terminated.</p>
+      <p>This prevents dropped requests and is standard practice in Kubernetes (<code>terminationGracePeriodSeconds</code>) and all major load balancers.</p>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Rate-Limited Scale-Down</div>
+      <p>Never remove more than a fixed percentage of capacity in a single step. A common rule: remove at most 10% of pods per 5-minute window. This prevents large sudden drops that could cascade. Mathematically:</p>
+      <div style="text-align:center;margin:8px 0">\(\left| \Delta^{-}_{c,k,t} \right| \;\leq\; 0.10 \cdot x^{\text{current}}_{c,k,t}\) per step</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Rollback Automation</div>
+      <p>Every provisioning action should be paired with an automated rollback trigger. If SLIs (latency, error rate) degrade beyond a threshold within the validation window, the system automatically reverts to the previous state. No human approval needed for rollback — only for proceeding forward.</p>
+    </div>
+  </div>
+
+  <div class="card warning">
+    <div class="card-title">Oscillation — The Auto-Scaler's Worst Enemy</div>
+    <p>Without dampening, the following can happen: demand rises → scaler adds pods → demand is now over-provisioned → scaler removes pods → demand spikes again → scaler adds pods ... This is <strong>oscillation</strong> (sometimes called "thrashing"), and it wastes resources and creates instability.</p>
+    <p>Solutions:</p>
+    <ul>
+      <li><strong>Cooldown periods:</strong> After a scale-up, block scale-down for a minimum window (e.g., 10 minutes). After scale-down, block further scale-down for 5 minutes.</li>
+      <li><strong>Hysteresis:</strong> Scale up at 75% utilization but only scale down at 30%. The wide gap between thresholds prevents rapid flipping.</li>
+      <li><strong>Smoothing:</strong> Use exponentially weighted moving averages of utilization rather than instantaneous readings. A 5-minute EWMA filters out transient spikes.</li>
+    </ul>
+    <p style="margin:0">In the interview, mentioning oscillation and hysteresis shows you've thought about operational stability, not just the steady-state math.</p>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">Bridge to Your Experience</div>
+    <p style="margin:0">This maps directly to supply chain execution. At Walmart, the optimizer might say "ship 5000 units from Import DC to Regional DC X" — but that shipment has a lead time, might arrive partially (split shipment), and the store's replenishment system needs to account for in-transit inventory. At Amazon, your fleet optimization with XL vans dealt with the same issue: the algorithm might say "deploy 20 XL vans on Route Y" but drivers need to be scheduled, vans need to be positioned, and two-driver shift transitions create transient capacity gaps. You've seen the gap between optimal plan and messy execution — bring that operational intuition to the interview.</p>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: INTERVIEW WALKTHROUGH -->
+<!-- ============================================================ -->
+<div class="section" id="s6">
+  <span class="section-number">SECTION 6 OF 6</span>
+  <h1>Interview <span class="thin">Walkthrough & Q&A</span></h1>
+  <p class="lead">This section puts everything together: the interview structure, the full architecture diagram you'll draw on the whiteboard, the deep-dive questions you'll face, common mistakes to avoid, and your hour-by-hour study schedule.</p>
+
+  <h2 id="s6-structure">Interview Structure — Manage Your Time</h2>
+
+  <p>A typical system design interview at Apple is 45-60 minutes. Here's how the time usually breaks down and what to do in each phase:</p>
+
+  <table>
+    <thead>
+      <tr><th>Phase</th><th>Time</th><th>Your Goal</th><th>What to Do</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Clarify</strong></td>
+        <td>5 min</td>
+        <td>Show maturity; scope the problem</td>
+        <td>Ask 3-5 smart questions (see below). Don't dive into design yet.</td>
+      </tr>
+      <tr>
+        <td><strong>2. High-Level</strong></td>
+        <td>10 min</td>
+        <td>Show you can see the full picture</td>
+        <td>Draw the full architecture diagram. Label all components. Describe data flow in 2 sentences per component.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Deep Dive #1</strong></td>
+        <td>12-15 min</td>
+        <td>Show depth in forecasting/ML</td>
+        <td>Interviewer will likely pick the forecasting component given your background. Go deep: hierarchical structure, model selection, reconciliation, prediction intervals.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Deep Dive #2</strong></td>
+        <td>12-15 min</td>
+        <td>Show you understand distributed systems</td>
+        <td>Likely the provisioning/scaling component or failure handling. Discuss the MIP, auto-scaling, cross-region failover.</td>
+      </tr>
+      <tr>
+        <td><strong>5. Edge Cases</strong></td>
+        <td>5-10 min</td>
+        <td>Show resilience thinking</td>
+        <td>"What if a region goes down?" "What if your forecast is wildly wrong?" "What about an unexpected viral event?" Handle gracefully.</td>
+      </tr>
+      <tr>
+        <td><strong>6. Your Questions</strong></td>
+        <td>5 min</td>
+        <td>Show genuine interest</td>
+        <td>Ask about the team's current biggest challenge, what time horizons they focus on, and how they handle iPhone launch capacity planning today.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Clarifying Questions to Ask at the Start</h3>
+  <p>These questions signal that you've thought about the problem before touching the whiteboard. Ask 3-5 of these:</p>
+
+  <ol>
+    <li>"What iCloud services are in scope — all of them, or a specific subset like storage-heavy services?"</li>
+    <li>"What time horizons matter most — real-time auto-scaling, quarterly capacity planning, or both?"</li>
+    <li>"How many regions are we designing for? Are these Apple-owned data centers, third-party cloud, or hybrid?"</li>
+    <li>"What's the current pain point — cost overrun from over-provisioning, outage risk from under-provisioning, or slow reaction to demand changes?"</li>
+    <li>"Are there data sovereignty constraints I should design for, like GDPR?"</li>
+    <li>"What's the SLA target — three nines, four nines?"</li>
+  </ol>
+
+  <h2 id="s6-arch">Full Architecture Diagram</h2>
+  <p>Practice drawing this until you can reproduce it from memory in under 10 minutes. This is what goes on the whiteboard in Phase 2.</p>
+
+  <div class="diagram">                                    ┌──────────────┐
+                                    │   CDN EDGE   │  Absorbs 60-80% of
+     Users (2B+ devices)  ────────►│   (Akamai /  │  read traffic before
+                                    │    Apple)    │  it hits origin
+                                    └──────┬───────┘
+                                           │ cache miss
+                                           ▼
+                              ┌──────────────────────┐
+                              │  GLOBAL LOAD BALANCER │  DNS / Anycast
+                              │  (geographic routing) │  Routes to nearest
+                              │  Weights: w(s,r,t)   │  healthy region
+                              └──────────┬───────────┘
+                   ┌─────────────────────┼─────────────────────┐
+                   ▼                     ▼                     ▼
+            ┌────────────┐       ┌────────────┐       ┌────────────┐
+            │  US-WEST   │       │  EUROPE    │       │   APAC     │
+            │  REGION    │       │  REGION    │       │   REGION   │
+            │            │       │            │       │            │
+            │ ┌────────┐ │       │            │       │            │
+            │ │Regional│ │       │   (same    │       │   (same    │
+            │ │  L7 LB │ │       │  structure │       │  structure │
+            │ └───┬────┘ │       │  per rgn)  │       │  per rgn)  │
+            │     │      │       │            │       │            │
+            │  ┌──┴───┐  │       │            │       │            │
+            │  │ K8s  │  │       │            │       │            │
+            │  │Cluster│  │       │            │       │            │
+            │  │(pods) │  │       │            │       │            │
+            │  └──────┘  │       │            │       │            │
+            └────────────┘       └────────────┘       └────────────┘
+                   │                     │                     │
+         metrics published to Kafka topics per region
+                   │                     │                     │
+                   ▼                     ▼                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           DATA SOURCES                                  │
+│                                                                         │
+│   Infrastructure Metrics     User Activity        Business Signals      │
+│   (Prometheus → Kafka)       (event streams       (internal APIs)       │
+│   ─────────────────────       → Kafka)            ────────────────      │
+│   • CPU/Mem/Storage/Net     • API request logs    • Device sales fcst   │
+│     per node (15s cadence)  • Signups, upgrades   • Product calendar    │
+│   • Queue depths            • Usage patterns      • Feature rollouts    │
+│   • Error rates, latency    • Geographic signals  • Marketing events    │
+│                                                                         │
+└──────────┬──────────────────────────┬─────────────────────┬─────────────┘
+           │                          │                     │
+           │    all streams via KAFKA topics                 │
+           ▼                          ▼                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         DATA PIPELINE LAYER                             │
+│                                                                         │
+│  ┌─────────────────────────┐   ┌──────────────────────────────────┐    │
+│  │ STREAMING: Kafka → Flink│   │ BATCH: Spark (daily/weekly jobs) │    │
+│  │ • Real-time aggregation │   │ • Training data preparation      │    │
+│  │   (5m avg CPU, 1h QPS)  │   │ • Historical pattern extraction  │    │
+│  │ • Anomaly detection     │   │ • Feature engineering             │    │
+│  │ • Writes to Redis cache │   │ • Reads from Time-Series DB      │    │
+│  └────────────┬────────────┘   └───────────────┬──────────────────┘    │
+│               │                                 │                       │
+│               ▼                                 ▼                       │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                      FEATURE STORE                               │   │
+│  │   Online serving:  Redis cache  (sub-ms reads for inference)     │   │
+│  │   Offline storage: Time-Series DB (historical features)          │   │
+│  │   Config/state:    PostgreSQL   (model params, MIP constraints)  │   │
+│  └──────────────────────────────┬───────────────────────────────────┘   │
+└─────────────────────────────────┼──────────────────────────────────────┘
+                                  │
+                 ┌────────────────┼─────────────────┐
+                 ▼                ▼                  ▼
+┌───────────────────┐  ┌────────────────┐  ┌──────────────────┐
+│   SHORT-TERM      │  │  MEDIUM-TERM   │  │   LONG-TERM      │
+│   FORECASTER      │  │  FORECASTER    │  │   FORECASTER     │
+│   (K8s pods)      │  │  (K8s pods)    │  │   (K8s batch job)│
+│                   │  │                │  │                   │
+│ Horizon: hrs-days │  │ Horizon: wk-mo │  │ Horizon: qtr-yr  │
+│ Model: online     │  │ Model: LightGBM│  │ Model: trend +   │
+│   gradient boost  │  │   / XGBoost    │  │   scenario sim    │
+│ Retrain: hourly   │  │ Retrain: weekly│  │ Retrain: qtrly   │
+│ Output: P10-P90   │  │ Output: P10-P90│  │ Output: scenarios │
+│ Reads: Redis      │  │ Reads: TSDB    │  │ Reads: TSDB      │
+│                   │  │                │  │                   │
+│ Consumer:         │  │ Consumer:      │  │ Consumer:         │
+│   Auto-scaler     │  │   Capacity     │  │   Strategic MIP   │
+│                   │  │   Planner      │  │   CapEx budget    │
+└────────┬──────────┘  └───────┬────────┘  └─────────┬────────┘
+         │                     │                      │
+         ▼                     ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                  HIERARCHICAL RECONCILIATION                            │
+│                                                                         │
+│   Ensures forecasts are coherent across:                                │
+│   Global → Region → AZ → Cluster → Service×Cluster                     │
+│   Method: MinT (minimum trace) optimal reconciliation                   │
+│   Output cached in Redis for downstream consumers                       │
+│                                                                         │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+              ┌────────────────┼─────────────────┐
+              ▼                ▼                  ▼
+┌───────────────────┐ ┌────────────────┐ ┌──────────────────┐
+│   REAL-TIME       │ │  CAPACITY      │ │  STRATEGIC       │
+│   AUTO-SCALER     │ │  PLANNER       │ │  OPTIMIZER       │
+│   (K8s pods)      │ │  (K8s pods)    │ │  (K8s batch job) │
+│                   │ │                │ │                   │
+│ • Predictive +    │ │ • Monthly      │ │ • Quarterly MIP  │
+│   reactive hybrid │ │   procurement  │ │   or LP relaxatn │
+│ • K8s HPA +       │ │   triggers     │ │ • CPLEX / Gurobi │
+│   custom scaler   │ │ • Lead-time-   │ │ • Region-level   │
+│ • Pre-scales for  │ │   aware orders │ │   CapEx alloc    │
+│   predicted surges│ │ • Vendor mgmt  │ │ • Scenario-based │
+│                   │ │                │ │   robust opt     │
+└────────┬──────────┘ └───────┬────────┘ └─────────┬────────┘
+         │                    │                     │
+         │     Decisions stored in PostgreSQL       │
+         │     (target state per cluster)           │
+         ▼                    ▼                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    EXECUTION & ORCHESTRATION                             │
+│                                                                         │
+│   • Kubernetes API: pod scaling, node provisioning, HPA config          │
+│   • Storage controller: volume expansion, replication config            │
+│   • Load balancer API: update weights, health check thresholds          │
+│   • DNS controller: update geographic routing, TTL management           │
+│   • CDN API: cache purge, edge config, origin failover rules            │
+│   • Migration orchestrator: two-phase data migration (see Sec 5)        │
+│   • Rollout controller: canary %, drain-before-kill, rate limits        │
+│                                                                         │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    MONITORING & FEEDBACK LOOP                            │
+│                                                                         │
+│   Time-Series DB:  forecast accuracy (MAPE, bias, quantile loss)        │
+│   Dashboards:      SLA compliance per service per region (Grafana)      │
+│   Alerting:        utilization >80% = warning, >90% = critical          │
+│   Cost tracker:    actual spend vs. MIP plan (stored in PostgreSQL)     │
+│   Drift detector:  triggers model retraining via Kafka event            │
+│   Post-mortem:     did we handle the iPhone launch correctly?           │
+│                                                                         │
+│   ────► Metrics fed back to Kafka ─► DATA PIPELINE (closed loop) ◄──── │
+└─────────────────────────────────────────────────────────────────────────┘</div>
+
+  <h2 id="s6-questions">Deep-Dive Q&A — Practice These</h2>
+  <p>Click each question to reveal a structured answer. Practice delivering these out loud — aim for 2-3 minutes per answer, not 30-second sound bites or 10-minute monologues.</p>
+
+  <div class="qa">
+    <div class="qa-question">"How do you handle an iPhone launch spike?"</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p><strong>Opening:</strong> "iPhone launches are known-in-advance demand surges — the cloud equivalent of Black Friday in retail. I'd handle them at three time scales."</p>
+      <p><strong>Long-term (months before):</strong> The strategic MIP incorporates Apple's product calendar. Historical data from previous launches (iPhone 15 → X% increase in iCloud Backup within 72 hours, Y PB of new photo storage within 30 days) gives us strong priors. The MIP pre-provisions capacity in regions where launch-day demand will be highest (typically US first, then staggered global rollout).</p>
+      <p><strong>Medium-term (weeks before):</strong> As the launch approaches, we refine forecasts with pre-order data and marketing signals. The capacity planner ensures procurement orders placed 8-16 weeks ago are arriving and being racked on schedule. We also pre-warm caches and verify that failover paths work.</p>
+      <p><strong>Short-term (hours/minutes):</strong> The predictive auto-scaler, trained on previous launch patterns, pre-scales services 2-4 hours before the anticipated surge. The reactive auto-scaler handles any deviation from the prediction. We also shift non-critical batch workloads (ML training, data compaction, analytics) to off-peak regions or defer them entirely, freeing capacity for user-facing traffic.</p>
+      <p><strong>Bridge:</strong> "At Walmart, I handled structurally identical surges for holiday demand. The forecaster incorporated promotional calendars, and the MIP pre-positioned inventory weeks before peak. The math is the same."</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">"What if your forecast is wrong?"</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p><strong>Opening:</strong> "Every forecast is wrong — the question is how the system degrades gracefully when it is."</p>
+      <p><strong>Defense 1 — Prediction intervals:</strong> We don't provision for the P50 (median) forecast. We provision for P80 or P90, which embeds statistical safety stock. The gap between P50 and P90 is our buffer. The more uncertain the forecast, the wider this interval, and the more headroom we provision. This is identical to safety stock formulas in supply chain — \(SS = z \cdot \sigma \cdot \sqrt{LT}\).</p>
+      <p><strong>Defense 2 — Reactive auto-scaling:</strong> Even if the predictive component misses, the reactive auto-scaler kicks in when CPU exceeds 75% or error rate exceeds threshold. This adds capacity within minutes. It's not ideal (users experience briefly elevated latency during the scale-up), but it prevents outages.</p>
+      <p><strong>Defense 3 — N+1 redundancy:</strong> The fault tolerance constraint in the MIP ensures that every region can survive the loss of an AZ. This structural headroom is always present, independent of forecast accuracy. If the forecast is wrong and demand spikes, the headroom reserved for fault tolerance acts as a buffer (though this is a last resort — you don't want to consume your fault tolerance margin for demand spikes).</p>
+      <p><strong>Defense 4 — Feedback and retraining:</strong> The monitoring layer tracks forecast accuracy in real-time. If MAPE exceeds a threshold or persistent bias is detected, an automatic retraining job kicks off. We also do post-mortem analysis after any significant forecast miss to identify root causes and improve the model.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">"How do you decide where to place capacity — US-West vs. Europe vs. Asia?"</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p><strong>Opening:</strong> "This is the strategic MIP's core job — it's a multi-region capacity allocation problem."</p>
+      <p><strong>The optimization:</strong> Decision variables are how much of each resource type to provision per region. The objective minimizes total cost — which includes hardware, power (varies by region — Oregon is cheap hydroelectric, London is expensive), network transit between regions, and a carbon intensity penalty to align with Apple's sustainability goals. Constraints enforce demand satisfaction per region (based on forecast), latency requirements (users must be served from a region within X ms), data sovereignty (EU data stays in EU), fault tolerance (survive loss of any region by having overflow capacity in neighboring regions), and budget limits.</p>
+      <p><strong>Bridge:</strong> "At Walmart, I solved a structurally identical problem — routing imports through ports, import DCs, and regional DCs to minimize cost while meeting demand at every store. The decision variables were flows through the network; constraints were port capacities, DC capacities, and service levels. The math translates directly."</p>
+      <p><strong>Nuance:</strong> I'd add scenario-based robust optimization — solve the MIP under optimistic, baseline, and pessimistic demand scenarios and choose the solution that's feasible across all scenarios. This hedges against long-term forecast uncertainty, especially for emerging regions where historical data is sparse.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">"What happens when a region goes down?"</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p><strong>Opening:</strong> "The system handles this at multiple layers, with automated responses at each."</p>
+      <p><strong>Layer 1 — Immediate (seconds):</strong> Health checks from the global load balancer detect the failure. DNS or anycast routing automatically shifts traffic to the designated overflow regions. No human intervention needed. Users experience a brief increase in latency (they're now being served from a farther region) but no outage.</p>
+      <p><strong>Layer 2 — Short-term (minutes):</strong> The auto-scaler in the surviving regions detects the traffic increase and scales up services. The short-term forecaster adjusts its predictions to account for the redistribution. Alerts fire to the on-call engineering team.</p>
+      <p><strong>Layer 3 — Medium-term (hours-days):</strong> The capacity planner evaluates whether the surviving regions have enough headroom to sustain the extra load indefinitely or if this is consuming fault-tolerance margins that need to be restored. If needed, additional capacity is provisioned (spinning up reserved cloud instances from a third-party provider as a bridge).</p>
+      <p><strong>Why this works:</strong> The N+1 constraint in the MIP ensures that every region's designated overflow partner has pre-provisioned headroom. This headroom is "paid for" by the MIP's cost function — it's an explicit cost we accept for the reliability guarantee. This is the same concept as safety stock in a multi-DC supply chain — each DC holds buffer inventory for itself and to absorb demand if a neighboring DC goes offline.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">"How do you handle multiple resource types that need to scale together?"</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p><strong>Opening:</strong> "Resources are coupled — you can't add CPU without proportional memory, storage, and network. The MIP handles this with coupling constraints."</p>
+      <p><strong>The coupling:</strong> Each workload type (service) has a resource profile — a ratio of CPU : RAM : storage : network that it requires. A Photos-heavy cluster needs ~10x more storage per CPU than a Siri-heavy cluster. The MIP includes constraints that enforce these ratios: if you provision X CPU cores on a cluster, you must also provision at least X × ram_ratio GB of RAM and X × storage_ratio TB of storage. Otherwise you get stranded capacity — CPUs sitting idle because there's no RAM to pair with them.</p>
+      <p><strong>Bridge:</strong> "This is like a multi-product supply chain where products are consumed together. You don't ship burger buns to a restaurant without proportional patties. At Walmart, our import model routed complementary product categories together through the same DC lanes to ensure balanced fulfillment. The MIP coupling constraints are the formal version of this."</p>
+      <p><strong>Physical constraints:</strong> Beyond ratios, there are physical limits. Each rack has a power budget (say, 20kW). Each server configuration has a fixed power draw. The MIP must respect these: total power draw of all equipment in a rack cannot exceed the rack's power limit. Similarly, each data center has a total cooling capacity and network uplink bandwidth that caps what you can provision there, regardless of demand.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">"How would you evaluate whether this system is working well?"</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p><strong>Opening:</strong> "I'd track three categories of metrics: forecast quality, provisioning efficiency, and business outcomes."</p>
+      <p><strong>Forecast quality:</strong> MAPE and bias (are we systematically over- or under-predicting?) per service, per region, per horizon. Weighted quantile loss for the prediction intervals (is the P90 actually the 90th percentile?). Drift detection tests (is forecast accuracy degrading over time?). I built standardized benchmarking methods for exactly this at Walmart.</p>
+      <p><strong>Provisioning efficiency:</strong> Utilization rate per cluster (target: 60-75% average — too low means wasted money, too high means no headroom for surges). Stranded capacity metrics (resources provisioned but unused because of coupling mismatches). Time-to-scale (how long between demand increase and capacity being available). Headroom consumed during incidents (are we eating into fault-tolerance margins?).</p>
+      <p><strong>Business outcomes:</strong> SLA compliance rate (target: 100% — any violation is a critical event). Total infrastructure cost vs. budget. Cost per user (unit economics). Carbon footprint per unit of compute (sustainability). Number and severity of capacity-related incidents per quarter (trending toward zero).</p>
+      <p><strong>Bridge:</strong> "At Walmart, I used SHAP-based interpretability to identify optimization levers in eCommerce KPI forecasting. The same approach applies here — use feature importance analysis to understand what's driving forecast errors and provisioning inefficiencies, then target those factors for improvement."</p>
+    </div></div>
+  </div>
+
+  <h2 id="s6-mistakes">Common Mistakes to Avoid</h2>
+
+  <div class="card danger">
+    <div class="card-title">Mistake #1: Going Too Deep on ML Too Early</div>
+    <p style="margin:0">The interview is about <em>system design</em>, not model architecture. Spending 10 minutes explaining LSTM vs. Transformer architectures signals that you're thinking at the wrong level of abstraction. Mention LightGBM/Prophet and move on. The interviewer will ask for depth if they want it — and when they do, <em>then</em> go deep on your hierarchical reconciliation approach and prediction intervals. Lead with the system, not the model.</p>
+  </div>
+
+  <div class="card danger">
+    <div class="card-title">Mistake #2: Ignoring the "Distributed" Part</div>
+    <p style="margin:0">It's tempting to focus only on forecasting and optimization because that's your comfort zone. But the interview is specifically called "Distributed System Design." Force yourself to spend at least 30% of your whiteboard time on infrastructure: how data flows between regions, how services communicate, what happens during network partitions, how you replicate data across AZs. A great forecasting model deployed on a single server is useless for iCloud.</p>
+  </div>
+
+  <div class="card danger">
+    <div class="card-title">Mistake #3: Presenting a Monolithic System</div>
+    <p style="margin:0">Don't describe your system as one big application. Show that you understand microservices thinking: the forecaster, the optimizer, the auto-scaler, the monitoring system, and the data pipeline are separate services that communicate via message queues (Kafka) or APIs. Each can be developed, deployed, and scaled independently. This is how real cloud-scale systems work.</p>
+  </div>
+
+  <div class="card danger">
+    <div class="card-title">Mistake #4: Forgetting the Feedback Loop</div>
+    <p style="margin:0">A system without monitoring and retraining is incomplete. Always close the loop: forecasts are evaluated against actuals, models are retrained when accuracy degrades, and the optimization parameters are updated based on observed outcomes. If you end your design without discussing monitoring, the interviewer will wonder if you've ever deployed a system in production. You have — make sure you show it.</p>
+  </div>
+
+  <div class="card danger">
+    <div class="card-title">Mistake #5: Not Bridging to Your Experience</div>
+    <p style="margin:0">Other candidates will give textbook answers. You can give <em>battle-tested</em> answers grounded in real systems you've built. Every time you describe a component, add one sentence connecting it to your Walmart or Amazon work. "This is the same approach I used for X at Walmart, where it delivered $Y in savings." Concrete > theoretical.</p>
+  </div>
+
+  <div class="card danger">
+    <div class="card-title">Mistake #6: Forgetting Cost and Sustainability</div>
+    <p style="margin:0">The job description explicitly mentions "environmental sustainability and optimal resource utilization." Mentioning power efficiency, renewable energy preferences in region selection, and utilization targets in your MIP constraints will resonate. This isn't just a nice-to-have — it's a signal that you've read the JD and understand Apple's values.</p>
+  </div>
+
+  <h2 id="s6-20hr">Your 20-Hour Study Schedule</h2>
+
+  <table>
+    <thead>
+      <tr><th>Hours</th><th>Activity</th><th>Goal</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1–3</strong></td>
+        <td>Section 2: Cloud infrastructure mental model. Watch one data center tour video (30 min). Read Google SRE Book Ch. 1 and skim Ch. 18 (free online). Sketch the hierarchy from memory.</td>
+        <td>Be able to draw the region → AZ → cluster → rack → node hierarchy and explain why each level exists.</td>
+      </tr>
+      <tr>
+        <td><strong>4–6</strong></td>
+        <td>Section 3: Distributed systems vocabulary. Watch ByteByteGo videos on scaling, load balancing, and replication. Read Kleppmann Ch. 1 and Ch. 6 only.</td>
+        <td>Use the top 10 concepts naturally in conversation.</td>
+      </tr>
+      <tr>
+        <td><strong>7–9</strong></td>
+        <td>Section 4: Design your forecasting pipeline. Write out the full pipeline on paper/whiteboard. Practice explaining hierarchical reconciliation with cloud terms. Prepare the "prediction intervals, not point forecasts" talking point.</td>
+        <td>Deliver a 5-minute explanation of the forecasting subsystem with confidence.</td>
+      </tr>
+      <tr>
+        <td><strong>10–13</strong></td>
+        <td>Section 5: Design the optimization layer. Write the MIP formulation on paper. Practice explaining objective, constraints, decision variables. Prepare the two-layer (strategic + tactical) explanation.</td>
+        <td>Write a clean MIP formulation on a whiteboard and explain each constraint.</td>
+      </tr>
+      <tr>
+        <td><strong>14–16</strong></td>
+        <td>Section 6: Full architecture. Draw the complete architecture diagram from memory 3 times. Time yourself — target under 10 minutes. Practice labeling and explaining data flow.</td>
+        <td>Draw the full system architecture under time pressure, fluently.</td>
+      </tr>
+      <tr>
+        <td><strong>17–18</strong></td>
+        <td>Q&A practice. Read all 6 deep-dive questions above. Practice answering each one out loud (talk to yourself, record on phone, or explain to a friend). Aim for 2-3 minutes per answer.</td>
+        <td>Deliver polished, concise answers to the most likely follow-up questions.</td>
+      </tr>
+      <tr>
+        <td><strong>19–20</strong></td>
+        <td>Full mock interview. Set a 50-minute timer. Ask a friend (or use ChatGPT/Claude) to play interviewer. Do the full flow: clarify → draw → deep dive → edge cases. Record and review.</td>
+        <td>Complete a realistic end-to-end interview simulation with feedback.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card success" style="margin-top: 40px;">
+    <div class="card-title">Final Reminder</div>
+    <p style="margin:0">You're not pretending to be a distributed systems expert. You're a <strong>proven optimization and forecasting engineer</strong> who can translate your skills to a new domain — which is exactly what the job requires. The role title is "ML Optimization Engineer," not "Distributed Systems Architect." They want someone who can formulate and solve the capacity planning problem mathematically, build the forecasting pipeline, and deploy it on cloud infrastructure. That's you. Own your background, bridge it to their domain, and show them the math. You've got this.</p>
+  </div>
+
+</div>
+
+</div> <!-- end main -->
+
+<script>
+// Collapsible sections
+document.querySelectorAll('.collapsible-header').forEach(header => {
+  header.addEventListener('click', () => {
+    header.parentElement.classList.toggle('open');
+  });
+});
+
+// Q&A toggles
+document.querySelectorAll('.qa-question').forEach(q => {
+  q.addEventListener('click', () => {
+    q.parentElement.classList.toggle('open');
+  });
+});
+
+// Active nav link tracking
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + entry.target.id) {
+          link.classList.add('active');
+        }
+      });
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(section => observer.observe(section));
+
+// Reading progress
+window.addEventListener('scroll', () => {
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const scrolled = window.scrollY;
+  const progress = Math.min((scrolled / docHeight) * 100, 100);
+  document.getElementById('progressFill').style.width = progress + '%';
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iCloud Capacity Planning — System Design Interview Prep</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+
+:root {
+  --sidebar-width: 290px;
+  --bg: #fafafa;
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #c4c4d4;
+  --sidebar-active: #e94560;
+  --sidebar-hover: #16213e;
+  --accent: #0071e3;
+  --accent-light: #e8f2fd;
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --card-bg: #ffffff;
+  --border: #e5e5ea;
+  --code-bg: #f5f5f7;
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --danger: #ff3b30;
+  --info: #5ac8fa;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; font-size: 16px;
+}
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-width);
+  background: var(--sidebar-bg); overflow-y: auto; z-index: 100;
+  scrollbar-width: thin; scrollbar-color: #333 var(--sidebar-bg);
+}
+.sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sidebar-header h2 { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
+.sidebar-header .subtitle { color: var(--sidebar-text); font-size: 12px; margin-top: 4px; opacity: 0.7; }
+.nav-section { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.nav-section-title {
+  color: var(--sidebar-active); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 20px 6px;
+}
+.nav-link {
+  display: block; padding: 7px 20px 7px 28px; color: var(--sidebar-text);
+  text-decoration: none; font-size: 13.5px; transition: all 0.15s;
+  border-left: 3px solid transparent; line-height: 1.4;
+}
+.nav-link:hover { background: var(--sidebar-hover); color: #fff; }
+.nav-link.active { color: #fff; background: var(--sidebar-hover); border-left-color: var(--sidebar-active); font-weight: 500; }
+.nav-link.sub { padding-left: 40px; font-size: 12.5px; opacity: 0.85; }
+.progress-container {
+  padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.05);
+  position: sticky; bottom: 0; background: var(--sidebar-bg);
+}
+.progress-label { color: var(--sidebar-text); font-size: 11px; margin-bottom: 6px; }
+.progress-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--sidebar-active); border-radius: 2px; width: 0%; transition: width 0.3s; }
+.main { margin-left: var(--sidebar-width); padding: 40px 60px 100px; max-width: 960px; }
+.section { margin-bottom: 80px; scroll-margin-top: 24px; }
+.section-number {
+  display: inline-block; background: var(--sidebar-active); color: #fff;
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px;
+  margin-bottom: 12px; letter-spacing: 0.5px;
+}
+h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; color: var(--text); }
+h1 .thin { font-weight: 300; color: var(--text-secondary); }
+h2 { font-size: 24px; font-weight: 600; margin: 48px 0 16px; color: var(--text); letter-spacing: -0.3px; scroll-margin-top: 24px; }
+h3 { font-size: 19px; font-weight: 600; margin: 32px 0 12px; color: var(--text); }
+h4 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; color: var(--text); }
+p { margin-bottom: 16px; }
+.lead { font-size: 18px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 32px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 20px 0; }
+.card.accent { border-left: 4px solid var(--accent); background: var(--accent-light); }
+.card.warning { border-left: 4px solid var(--warning); background: #fff8ee; }
+.card.success { border-left: 4px solid var(--success); background: #f0faf2; }
+.card.danger { border-left: 4px solid var(--danger); background: #fff5f5; }
+.card-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14.5px; }
+thead th {
+  background: var(--sidebar-bg); color: #fff; padding: 12px 16px; text-align: left;
+  font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+thead th:first-child { border-radius: 8px 0 0 0; }
+thead th:last-child { border-radius: 0 8px 0 0; }
+tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:hover { background: var(--accent-light); }
+.code-block {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 20px 0; white-space: pre;
+}
+code {
+  font-family: 'SF Mono', 'Fira Code', monospace; background: var(--code-bg);
+  padding: 2px 6px; border-radius: 4px; font-size: 14px;
+}
+.diagram {
+  background: #fff; border: 2px solid var(--border); border-radius: 12px;
+  padding: 24px; margin: 24px 0; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12.5px; line-height: 1.5; white-space: pre; overflow-x: auto;
+}
+.collapsible { margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.collapsible-header {
+  padding: 14px 20px; background: var(--card-bg); cursor: pointer; font-weight: 600;
+  font-size: 15px; display: flex; justify-content: space-between; align-items: center;
+  user-select: none; transition: background 0.15s;
+}
+.collapsible-header:hover { background: var(--code-bg); }
+.collapsible-header::after { content: '+'; font-size: 20px; color: var(--accent); font-weight: 300; }
+.collapsible.open .collapsible-header::after { content: '\2212'; }
+.collapsible-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.collapsible.open .collapsible-body { max-height: 8000px; }
+.collapsible-content { padding: 16px 20px 20px; border-top: 1px solid var(--border); }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
+.tag.blue { background: #e3f0ff; color: #0055b3; }
+.tag.green { background: #e6f9e8; color: #1b7a2b; }
+.tag.orange { background: #fff3e0; color: #b36b00; }
+.tag.red { background: #ffe5e5; color: #b30000; }
+.tag.purple { background: #f0e6ff; color: #6b21a8; }
+.qa { margin: 20px 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.qa-question {
+  padding: 16px 20px; background: var(--sidebar-bg); color: #fff; font-weight: 600;
+  font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+}
+.qa-question::after {
+  content: 'Show Answer'; font-size: 11px; font-weight: 500; flex-shrink: 0;
+  background: var(--sidebar-active); padding: 4px 10px; border-radius: 4px;
+}
+.qa.open .qa-question::after { content: 'Hide'; }
+.qa-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+.qa.open .qa-answer { max-height: 8000px; }
+.qa-answer-content { padding: 20px; background: #fff; }
+.qa-answer-content p:last-child { margin-bottom: 0; }
+.followup { margin: 16px 0 0 0; padding: 16px; background: var(--code-bg); border-radius: 8px; border-left: 3px solid var(--accent); }
+.followup-q { font-weight: 600; font-size: 14px; color: var(--accent); margin-bottom: 6px; }
+.followup-a { font-size: 14px; color: var(--text); line-height: 1.6; }
+hr { border: none; height: 1px; background: var(--border); margin: 40px 0; }
+.divider {
+  display: flex; align-items: center; gap: 16px; margin: 48px 0 32px;
+  color: var(--text-secondary); font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.math-block {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 24px 28px; margin: 20px 0; overflow-x: auto; line-height: 2.2;
+}
+.math-block .math-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; display: block;
+}
+.katex { font-size: 1.05em; }
+.katex-display { margin: 0.8em 0; }
+ul, ol { margin: 12px 0 16px 24px; }
+li { margin-bottom: 6px; }
+mark { background: #fff3cd; padding: 1px 4px; border-radius: 3px; }
+strong { font-weight: 600; }
+.bridge {
+  background: linear-gradient(135deg, #f0e6ff 0%, #e3f0ff 100%);
+  border: 1px solid #d4c5f9; border-radius: 10px; padding: 20px; margin: 20px 0;
+}
+.bridge-title { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b21a8; margin-bottom: 8px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px; }
+  .two-col { grid-template-columns: 1fr; }
+}
+.step { display: flex; gap: 16px; margin: 20px 0; align-items: flex-start; }
+.step-num {
+  flex-shrink: 0; width: 32px; height: 32px; background: var(--accent); color: #fff;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; margin-top: 2px;
+}
+.step-content { flex: 1; }
+.step-content p:last-child { margin-bottom: 0; }
+
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h2>iCloud Capacity Planning</h2>
+    <div class="subtitle">System Design Interview Prep</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Topic 1</div>
+    <a href="#s1" class="nav-link">Multi-Horizon Planning</a>
+    <a href="#s1-short" class="nav-link sub">Short-Term (Min→Days)</a>
+    <a href="#s1-medium" class="nav-link sub">Medium-Term (Wk→Mo)</a>
+    <a href="#s1-long" class="nav-link sub">Long-Term (6–24 Mo)</a>
+    <a href="#s1-irrev" class="nav-link sub">Irreversibility</a>
+    <a href="#s1-loop" class="nav-link sub">Control Loop</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Topic 2</div>
+    <a href="#s2" class="nav-link">Resource Modeling</a>
+    <a href="#s2-compute" class="nav-link sub">Compute (CPU/GPU)</a>
+    <a href="#s2-storage" class="nav-link sub">Storage</a>
+    <a href="#s2-network" class="nav-link sub">Network</a>
+    <a href="#s2-services" class="nav-link sub">Service Profiles</a>
+    <a href="#s2-coupled" class="nav-link sub">Bottleneck Modeling</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Topic 3</div>
+    <a href="#s3" class="nav-link">Cost Modeling</a>
+    <a href="#s3-types" class="nav-link sub">CAPEX & OPEX</a>
+    <a href="#s3-unit" class="nav-link sub">Unit Economics</a>
+    <a href="#s3-depreciation" class="nav-link sub">Depreciation</a>
+    <a href="#s3-energy" class="nav-link sub">Energy & Carbon</a>
+    <a href="#s3-shadow" class="nav-link sub">Shadow Prices</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Topic 4</div>
+    <a href="#s4" class="nav-link">Optimization</a>
+    <a href="#s4-lp" class="nav-link sub">LP Allocation</a>
+    <a href="#s4-mip" class="nav-link sub">MIP Decisions</a>
+    <a href="#s4-bin" class="nav-link sub">Bin Packing</a>
+    <a href="#s4-robust" class="nav-link sub">Robust Optimization</a>
+    <a href="#s4-decomp" class="nav-link sub">Decomposition</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Topic 5</div>
+    <a href="#s5" class="nav-link">Service Planning</a>
+    <a href="#s5-storage" class="nav-link sub">iCloud Storage</a>
+    <a href="#s5-relay" class="nav-link sub">Private Relay</a>
+    <a href="#s5-pcc" class="nav-link sub">Private Compute</a>
+    <a href="#s5-llm" class="nav-link sub">LLM Inference</a>
+    <a href="#s5-edge" class="nav-link sub">Edge Cloud</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Topic 6</div>
+    <a href="#s6" class="nav-link">Risk & Reliability</a>
+    <a href="#s6-frag" class="nav-link sub">Fragmentation</a>
+    <a href="#s6-headroom" class="nav-link sub">Headroom Policies</a>
+    <a href="#s6-failover" class="nav-link sub">Failover & DR</a>
+    <a href="#s6-whatif" class="nav-link sub">What-If Scenarios</a>
+    <a href="#s6-sustain" class="nav-link sub">Sustainability</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Interview Q&amp;A</div>
+    <a href="#qa" class="nav-link">Questions &amp; Answers</a>
+    <a href="#qa-topic-1-multi-horizon-planning" class="nav-link sub">Topic 1: Multi-Horizon Planning</a>
+    <a href="#qa-topic-2-resource-modeling" class="nav-link sub">Topic 2: Resource Modeling</a>
+    <a href="#qa-topic-3-cost-modeling" class="nav-link sub">Topic 3: Cost Modeling</a>
+    <a href="#qa-topic-4-optimization-formulations" class="nav-link sub">Topic 4: Optimization Formulations</a>
+    <a href="#qa-topic-5-service-specific-planning" class="nav-link sub">Topic 5: Service-Specific Planning</a>
+    <a href="#qa-topic-6-risk--reliability" class="nav-link sub">Topic 6: Risk & Reliability</a>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-label">Reading progress</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</nav>
+
+
+<div class="main">
+
+<div class="section" id="s1">
+  <span class="section-number">TOPIC 1 OF 6</span>
+  <h1>Multi-Horizon <span class="thin">Capacity Planning Framework</span></h1>
+  <p class="lead">The backbone of any capacity planning system design interview. You must clearly structure decisions by time horizon, showing how short-term tactical actions, medium-term fleet decisions, and long-term capital investments interact through feedback loops.</p>
+
+  <h2 id="s1-short">Short-Term Planning (Minutes → Days)</h2>
+
+<p>Short-term capacity planning operates in the realm of immediate demand response. For Apple iCloud, this horizon spans real-time through daily patterns. The core challenge: while cloud infrastructure theoretically offers elasticity, practical constraints in admission control, networking oversubscription, and thermal limits create hard capacity ceilings.</p>
+
+<h4>Admission Control &amp; Throttling</h4>
+<p>Consider iCloud Photo Sync. When a user triggers a photo upload, the system must immediately decide: accept, throttle to a lower-priority tier, or reject. This is governed by an admission control policy monitoring current queue depth \(Q(t)\), available worker threads \(W\), downstream storage replication IOPS, and network ingress bandwidth.</p>
+
+<div class="math-block">
+<span class="math-label">Admission Control Thresholds</span>
+$$Q(t) > \alpha W \implies \text{Soft throttle (lower-priority queue)}$$
+$$Q(t) > \beta W \implies \text{Hard throttle (rate limit ingress)}$$
+$$Q(t) > W \implies \text{Reject with exponential backoff}$$
+<span class="math-comment">Typical values: α = 0.7, β = 0.9. A Kalman filter forecasts Q(t+Δt) for predictive throttling.</span>
+</div>
+
+<h4>Load Shifting Across Regions</h4>
+<p>During US peak hours (6–10 PM Pacific), iCloud Photo Sync demand is highest on US-West. Batch ML inference workloads can be migrated to EU-West where utilization is lower. This regional arbitrage is constrained by cross-region network cost (5–10× more per GB than intra-region), latency budgets for batch jobs, and data residency compliance (EU data stays in EU).</p>
+
+<div class="math-block">
+<span class="math-label">Regional Load-Shifting Optimizer</span>
+$$\max \sum_i c_i(t) \cdot \sum_j B_{ij}(t) - \sum_{i,j} p_{ij} \cdot B_{ij}(t)$$
+<span class="math-comment">Where B<sub>ij</sub>(t) = batch workload shifted from region i to j, p<sub>ij</sub> = per-job migration cost, c<sub>i</sub>(t) = capacity urgency in region i.</span>
+</div>
+
+<h4>Auto-Scaling Policies</h4>
+<p><strong>CPU auto-scaling</strong> has near-zero deployment latency — VMs can be created and added to load balancers in under a minute. Monitor p95/p99 latency; if either exceeds SLO, spawn new container instances.</p>
+
+<p><strong>GPU auto-scaling</strong> is fundamentally different. LLM inference for Apple Intelligence is memory-bound. A 70B-parameter model in FP8 occupies ~140 GB — exceeding a single H100's 80 GB HBM2e. GPU provisioning delay is 5–10 minutes (model weight initialization), and at $15K–$50K per unit, provisioning for a 30-second spike is economically irrational.</p>
+
+<p>Short-term GPU capacity management therefore relies on:</p>
+<ul>
+  <li><strong>Request batching:</strong> Queue requests in 100ms windows, process batches of 32 on a single GPU</li>
+  <li><strong>Priority queue management:</strong> High-priority Siri queries jump the queue; photo enhancement waits</li>
+  <li><strong>Graceful degradation:</strong> If queue depth exceeds threshold, fall back to smaller on-device model</li>
+</ul>
+
+<h4>SLO Violation Mitigation</h4>
+<p>iCloud SLOs are stringent: Photo Sync p99 ≤ 5s, Private Relay p99 ≤ 500ms, iMessage p99 ≤ 2s. When latency spikes above SLO, the system must diagnose within milliseconds:</p>
+<ul>
+  <li>Compute saturation (CPU > 90%) → Shed background jobs (analytics logging)</li>
+  <li>Queue buildup (depth > 1s drain time) → Aggressive throttling</li>
+  <li>Network congestion (packet loss > 0.1%) → Reduce batch sizes, shift traffic across paths</li>
+  <li>GC pauses (> 100ms) → Emergency GC or process restart</li>
+</ul>
+
+
+  <h2 id="s1-medium">Medium-Term Planning (Weeks → Months)</h2>
+
+<p>Medium-term planning operates at quarterly to semi-annual horizons, involving fleet composition decisions harder to reverse than throttling but cheaper than capital investment.</p>
+
+<h4>Fleet Mix Rebalancing</h4>
+<p>Apple's infrastructure comprises three primary node types: <strong>CPU nodes</strong> (~$60–80K, dual-socket AMD EPYC 9004, 192 cores), <strong>GPU nodes</strong> (~$160–320K, 4–8 H100 GPUs), and <strong>Storage nodes</strong> (~$50K, 90+ TB per node).</p>
+
+<div class="math-block">
+<span class="math-label">Fleet Mix MILP</span>
+$$\min \sum_t \left[ c_\text{CPU} \cdot n_{c,t} + c_\text{GPU} \cdot n_{g,t} + c_\text{Stor} \cdot n_{s,t} + M \sum_t y_t \right]$$
+<span class="math-comment">Subject to: demand satisfaction per resource type, utilization target ≤ 0.75, lead-time ordering constraints, integer constraints on batch ordering (GPUs ordered in batches of 4/8/16).</span>
+</div>
+
+<h4>Workload Placement Optimization</h4>
+<p>Apple operates multiple DCs per region (e.g., US-West: Nevada, Northern California, Oregon). Each has different power costs, network topology, user latency profiles, and cooling constraints. The placement problem asks: given services and DCs, how to distribute workloads to minimize latency + network cost + power cost?</p>
+
+<div class="math-block">
+<span class="math-label">Workload Placement LP</span>
+$$\min \sum_{s,d,d'} \text{traffic}_{s,d,d'} \cdot r_{d,d'} + \sum_{s,d} \text{power-cost}_d \cdot \text{compute}_{s,d}$$
+$$\text{s.t.} \quad \sum_d x_{s,d} = 1 \;\forall s, \quad \sum_d x_{s,d} \cdot l_{d,u} \leq L_s \;\forall s,u$$
+</div>
+
+<h4>LLM Inference Capacity Reservation</h4>
+<p>Apple Intelligence uses a tiered inference architecture:</p>
+
+<table>
+<thead><tr><th>Tier</th><th>Model</th><th>Hardware</th><th>Latency</th><th>Use Case</th></tr></thead>
+<tbody>
+<tr><td>Tier 1</td><td>13B distilled</td><td>Single GPU</td><td>200ms</td><td>Simple queries (Siri basics)</td></tr>
+<tr><td>Tier 2</td><td>70B full</td><td>4-GPU tensor parallel</td><td>500ms</td><td>Complex reasoning</td></tr>
+<tr><td>Tier 3</td><td>On-device</td><td>Apple Neural Engine</td><td>Variable</td><td>Fallback when cloud overloaded</td></tr>
+</tbody>
+</table>
+
+<p>With 500M Apple Intelligence-enabled devices, 15% triggering cloud inference daily, and 2× peak-to-average ratio: Tier 1 needs ~2,800 GPUs, Tier 2 needs ~16,800 H100s. Total GPU CAPEX: ~$600M. This must be ordered 6–8 quarters ahead.</p>
+
+<h4>Edge vs. Centralized Reallocation</h4>
+<p>Private Relay's two-hop architecture illustrates this tradeoff. Moving Proxy 2 from 5 centralized locations to 50 distributed PoPs reduces network cost from $2.5M/month to $250K/month, but increases operational overhead ($500K/month in staffing) and reliability risk. Net savings: ~$1.6M/month ($19M/year), justifying a 4-quarter rollout plan.</p>
+
+
+  <h2 id="s1-long">Long-Term Planning (6–24 Months)</h2>
+
+<p>Long-term planning is driven by infrastructure capital constraints. A new hyperscale data center takes 18–36 months from site selection to accepting first workloads.</p>
+
+<h4>Data Center Build-Out Planning</h4>
+<p>Site selection criteria: proximity to users (minimize latency), power grid access (50–100 MW continuous), renewable energy availability (Apple's 100% renewable commitment), cooling water/air capacity, redundant fiber routes, regulatory compliance (GDPR, data residency), and geopolitical stability.</p>
+
+<div class="card accent">
+<div class="card-title">Example: Asia-Pacific DC Site Selection</div>
+<p>Three candidate sites — Melbourne ($1B, 99% renewable, 10M users), Tokyo ($1.2B, 50% renewable, 40M users, seismic resilience), Singapore ($900M, strategic hub for 200M+ users). Forecast demand 5 years out: \(D_5 = D_0 \cdot (1.20)^5 \cdot (1.15)^5 \approx 5 \times D_0\). If current capacity is 100 PB at 60% utilization, new capacity needed ≈ 533 PB.</p>
+</div>
+
+<h4>Hardware Procurement Lead Times</h4>
+<p>NVIDIA H100 GPUs: ~16-week lead time (4 months). Custom Apple silicon: 12+ months (design + validation). A typical cycle: forecast demand in Q2, place orders for 20,000 H100s targeting Q4 delivery, deploy in Q1, launch Apple Intelligence with sufficient capacity. If adoption exceeds forecast by &gt;20%, place emergency orders at premium cost.</p>
+
+<h4>Renewable Energy &amp; Architecture Shifts</h4>
+<p>Renewable energy commitments constrain location choices — new DCs must be in regions with available wind/solar capacity. Architecture shifts like ARM-based servers (Apple Silicon for cloud) can reduce power consumption by 40% vs. x86, fundamentally changing the long-term cost model and enabling smaller, more distributed facilities.</p>
+
+
+  <h2 id="s1-irrev">Irreversibility &amp; Commitment Levels</h2>
+
+<table>
+<thead><tr><th>Horizon</th><th>Decision Type</th><th>Reversibility</th><th>Capital Locked</th></tr></thead>
+<tbody>
+<tr><td>Short-term</td><td>Auto-scale, throttle, load-shift</td><td>Fully reversible (minutes)</td><td>Near-zero (OPEX only)</td></tr>
+<tr><td>Medium-term</td><td>Fleet mix, GPU reservation, lease terms</td><td>Partially reversible (weeks)</td><td>Moderate ($10M–$100M)</td></tr>
+<tr><td>Long-term</td><td>DC build, hardware procurement, PPAs</td><td>Effectively irreversible</td><td>High ($100M–$1B+ CAPEX)</td></tr>
+</tbody>
+</table>
+
+<p>This maps to a <strong>decision-theoretic framework</strong>: short-term decisions use greedy/myopic optimization (fast, good enough). Medium-term uses rolling-horizon MIP with quarterly replanning. Long-term requires scenario analysis and real-options valuation — the option to defer building a DC has value because you learn more about demand over time.</p>
+
+
+  <h2 id="s1-loop">Control Loop Structure</h2>
+
+<div class="diagram">Observe         Estimate        Optimize        Deploy         Monitor        Correct
+  │                │               │               │              │              │
+  ▼                ▼               ▼               ▼              ▼              ▼
+Telemetry    State Estimation   Capacity MIP   Provisioning   SLO Tracking   Feedback
+(metrics,    (Kalman filter,   (LP/MIP with   (auto-scale,   (p99 latency,  (adjust
+ logs,        demand forecast,  cost obj,      procure HW,    utilization,   forecasts,
+ traces)      confidence        constraints)   deploy SW)     error rates)   retune)
+              intervals)
+  │                                                                            │
+  └────────────────────────── Feedback Loop ◄──────────────────────────────────┘</div>
+
+<p>The critical design principle: <strong>separate forecast input from capacity decision logic.</strong> Forecasts produce demand estimates with confidence intervals; the optimizer consumes these as parameters, not as hard constraints. This decoupling prevents the "garbage in, garbage out" problem and allows each component to be improved independently.</p>
+
+<div class="card warning">
+<div class="card-title">Why Feedback Delays Cause Oscillation</div>
+<p>If the control loop reacts too aggressively to forecast changes, it creates oscillation: over-provisioning triggers cost alarms → rapid de-provisioning → SLO violations → emergency re-provisioning. Mitigate with <strong>deadbands</strong> (only scale up if demand exceeds 75% utilization for 2 consecutive weeks) and <strong>PID-style control</strong> adapted for discrete capacity steps. Target utilization curves should vary by service tier: latency-critical LLM inference targets 60%, bulk storage replication targets 75%.</p>
+</div>
+
+<p><strong>Planning cycle cadence:</strong> Short-term runs continuously (every 5 minutes). Medium-term runs weekly with quarterly deep-dives. Long-term runs quarterly with annual strategic reviews. Each horizon's output constrains the next: long-term budgets bound medium-term hardware availability, which bounds short-term capacity headroom.</p>
+
+
+</div>
+
+<div class="section" id="s2">
+  <span class="section-number">TOPIC 2 OF 6</span>
+  <h1>Resource Modeling <span class="thin">for iCloud Services</span></h1>
+  <p class="lead">Apple cares deeply about physical constraints. Capacity is multidimensional — compute, storage, network — and the bottleneck resource defines effective capacity. You must model resource "shapes" and understand how they couple.</p>
+
+  <h2 id="s2-compute">Compute Resources</h2>
+
+<h4>CPU Cores</h4>
+<p>A typical iCloud CPU node (dual-socket AMD EPYC 9004, 192 cores) has ~162 allocatable cores after kernel overhead (10–15%), hypervisor (5–10%), and monitoring (2–5 cores). With 10–15% bin-packing fragmentation waste:</p>
+
+<div class="math-block">
+<span class="math-label">CPU Capacity Model</span>
+$$C_\text{usable} = n \times 162 \times (1 - 0.125) = 142n \text{ cores}$$
+$$\text{Utilization target} = 70\% \implies C_\text{available} = 142n \times 0.70 = 99.4n \text{ cores}$$
+<span class="math-comment">For a region with 1,000 CPU nodes: 99,400 available cores.</span>
+</div>
+
+<h4>GPU Memory: The Binding Constraint for LLM Inference</h4>
+<p>An NVIDIA H100 has 80 GB HBM2e at ~3 TB/s bandwidth and 141 TFLOPS FP32. A 70B-parameter LLM in FP8 requires ~70 GB — barely fitting one H100 with ~10 GB for KV-cache and activations. Throughput depends heavily on batch size:</p>
+
+<table>
+<thead><tr><th>Batch Size</th><th>Latency</th><th>Throughput (inferences/s)</th><th>GPU Memory Used</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>500ms</td><td>2</td><td>72 GB</td></tr>
+<tr><td>8</td><td>700ms</td><td>11.4</td><td>76 GB</td></tr>
+<tr><td>32</td><td>1000ms</td><td>32</td><td>80 GB (saturated)</td></tr>
+</tbody>
+</table>
+
+<p>For 10,000 QPS peak demand with batch-32: need 313 H100s. At 70% utilization target: <strong>447 H100s</strong> ($13.4M CAPEX).</p>
+
+<h4>Custom Apple Silicon</h4>
+<p>Hypothetical Apple-designed cloud accelerator: 160 GB HBM (hosts 140B model on single chip), 5 TB/s bandwidth, 400W (vs. H100's 700W). Throughput: 64 inferences/s per chip. For 10K QPS: only 156 chips needed. TCO savings over 5 years: <strong>$84.5M</strong> vs. H100 fleet, justifying $100M R&amp;D investment.</p>
+
+
+  <h2 id="s2-storage">Storage Resources</h2>
+
+<h4>Capacity Growth Modeling</h4>
+<div class="math-block">
+<span class="math-label">iCloud Storage Demand Forecast</span>
+$$D_\text{storage}(t) = N_\text{devices}(t) \times S_\text{avg}(t)$$
+$$N_\text{devices}(t) = 1.5\text{B} \times (1.06)^t, \quad S_\text{avg}(t) = 40\text{ GB} \times (1.15)^t$$
+$$D_\text{storage}(2029) \approx 161 \text{ PB}$$
+</div>
+
+<h4>Replication &amp; Erasure Coding</h4>
+<p>Three-way replication stores 3 copies (replication factor 3×). Erasure coding (e.g., 4+2 Reed-Solomon) achieves 1.5× effective replication — saving 2× storage vs. 3-way replication, at the cost of higher decode CPU and latency. Apple likely uses a hybrid approach:</p>
+
+<table>
+<thead><tr><th>Tier</th><th>Access Pattern</th><th>Replication Strategy</th><th>Effective Factor</th></tr></thead>
+<tbody>
+<tr><td>Hot</td><td>Frequent access (recent photos)</td><td>3-way replication</td><td>3.0×</td></tr>
+<tr><td>Warm</td><td>Occasional access</td><td>(4,2) erasure coding</td><td>1.5×</td></tr>
+<tr><td>Cold</td><td>Rare (account recovery)</td><td>(6,3) erasure coding</td><td>1.5×</td></tr>
+</tbody>
+</table>
+
+<p>Blended effective replication factor: ~2.0×. Raw storage needed: 2.0 × 161 PB = <strong>322 PB</strong> by 2029.</p>
+
+<h4>IOPS and Throughput</h4>
+<p>SSDs: 50K–100K IOPS, 1–5ms latency. HDDs: 200–500 IOPS, 5–20ms latency. iCloud has strong read/write asymmetry — reads are 10× writes at the regional level. The bottleneck is usually peak write throughput during evening sync hours when millions of users upload photos simultaneously.</p>
+
+
+  <h2 id="s2-network">Network Resources</h2>
+
+<h4>Network Tiers</h4>
+<ul>
+  <li><strong>Inter-rack:</strong> 25–100 Gbps links, 4:1 oversubscription ratio within DC</li>
+  <li><strong>Inter-DC (cross-region):</strong> $0.05–$0.10/GB transit, ~150ms transoceanic latency. 10–100 Tbps between major region pairs.</li>
+  <li><strong>Edge-to-user:</strong> Last-mile bottleneck (100–500 Mbps home broadband, 20–50 Mbps mobile)</li>
+</ul>
+
+<h4>Latency Budget Decomposition</h4>
+<div class="diagram">iCloud Photo Sync (5s total SLO):
+  Device I/O ........... 100ms
+  Network (up) ......... 50ms
+  Queue wait ........... 100ms
+  Server compute ....... 200ms
+  Network (down) ....... 50ms
+  Device confirm ....... 100ms
+  ─────────────────────────
+  Typical p99 .......... 600ms  (well within 5s budget)
+  Headroom for spikes .. 4400ms</div>
+
+<h4>CDN &amp; Edge Caching</h4>
+<p>80–90% cache hit rate for photo thumbnails means most viewing traffic never touches the backbone. Apple operates 50–100 CDN PoPs globally, each caching ~10 PB of popular content. This saves enormous backbone bandwidth but adds $250M–$500M in CDN infrastructure investment.</p>
+
+
+  <h2 id="s2-services">Service Resource Profiles</h2>
+
+<table>
+<thead><tr><th>Service</th><th>Primary Resource</th><th>Compute</th><th>Storage</th><th>Network</th></tr></thead>
+<tbody>
+<tr><td>iCloud Photo Sync</td><td>Storage</td><td>Moderate (encrypt, metadata)</td><td><strong>Very High</strong> (PB-scale, 20% YoY growth)</td><td>High (5 MB/photo × millions)</td></tr>
+<tr><td>Private Relay</td><td>Network</td><td>Moderate (TLS encryption CPU)</td><td>Low</td><td><strong>Very High</strong> (2-hop encryption proxy)</td></tr>
+<tr><td>Private Compute</td><td>Secure Compute</td><td><strong>High</strong> (secure enclave, burst)</td><td>Low (stateless)</td><td>Moderate</td></tr>
+<tr><td>LLM Inference</td><td>GPU</td><td><strong>Very High</strong> (GPU memory-bound)</td><td>Moderate (model weights)</td><td>Moderate</td></tr>
+<tr><td>Edge Cloud</td><td>Latency</td><td>Moderate (preprocessing)</td><td>Low</td><td><strong>High</strong> (tight latency SLO)</td></tr>
+</tbody>
+</table>
+
+
+  <h2 id="s2-coupled">Coupled Constraints &amp; Bottleneck Modeling</h2>
+
+<p>Effective capacity is multidimensional. A server's throughput is limited by whichever resource hits its ceiling first:</p>
+
+<div class="math-block">
+<span class="math-label">Bottleneck Capacity Model</span>
+$$x \leq \min\left(\frac{\text{CPU}}{c_1},\; \frac{\text{GPU}}{c_2},\; \frac{\text{Net}}{c_3},\; \frac{\text{Storage}}{c_4}\right)$$
+<span class="math-comment">The bottleneck resource defines effective capacity. All other resources above the bottleneck are "stranded."</span>
+</div>
+
+<div class="card danger">
+<div class="card-title">Stranded Capacity Example</div>
+<p>A rack has 60% CPU utilization but 95% memory utilization. The remaining 40% CPU is <strong>stranded</strong> — unusable because memory is exhausted. Similarly, a DC with 1,000 GPUs but only 900 NVMe drives for model caching must leave 100 GPUs idle. Stranded capacity represents pure waste in your cost model.</p>
+</div>
+
+<p>Solutions: (1) joint procurement (balanced GPU + memory + NVMe packages), (2) rebalancing via racking changes, (3) workload shifting (route non-memory-intensive work to memory-constrained nodes). In your MIP, model paired resources and penalize imbalance: add constraint \(y_r \geq 0.9 \times x_r\) ensuring each GPU has sufficient NVMe backing.</p>
+
+
+</div>
+
+<div class="section" id="s3">
+  <span class="section-number">TOPIC 3 OF 6</span>
+  <h1>Cost Modeling <span class="thin">(Critical for Apple)</span></h1>
+  <p class="lead">The job description explicitly mentions cost modeling. You must think in $/unit of service and demonstrate fluency with CAPEX, OPEX, depreciation, energy costs, and shadow prices from LP duals.</p>
+
+  <h2 id="s3-types">Cost Types: CAPEX &amp; OPEX</h2>
+
+<div class="two-col">
+<div class="card accent">
+<div class="card-title">CAPEX (Capital Expenditure)</div>
+<ul>
+  <li>DC Construction: $600M–$1.2B per hyperscale facility</li>
+  <li>Server/GPU purchase: CPU node $60–80K, GPU node $160–320K, Storage node $50–70K</li>
+  <li>Networking equipment: $200M–$500M per DC</li>
+  <li>Custom silicon R&D: $100M–$300M per generation</li>
+</ul>
+</div>
+<div class="card warning">
+<div class="card-title">OPEX (Operating Expenditure)</div>
+<ul>
+  <li>Power &amp; cooling: ~$19M/year per 60 MW DC (PUE 1.15–1.20)</li>
+  <li>Labor: ~$20M/year per DC (100 FTE)</li>
+  <li>Hardware replacement: ~$105M/year (2–5% failure rate)</li>
+  <li>Network transit: $12M–$120M/year</li>
+</ul>
+</div>
+</div>
+
+<p><strong>Horizon interaction:</strong> Short-term is almost pure OPEX (spin up VMs, pay for power). Medium-term is hybrid (purchase servers to reduce per-unit costs). Long-term is dominated by CAPEX (pour concrete, buy GPUs with 6–12 month lead times).</p>
+
+
+  <h2 id="s3-unit">Unit Economics</h2>
+
+<h4>Cost per GB Stored per Month</h4>
+<table>
+<thead><tr><th>Component</th><th>Cost per GB/month</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Hardware amortization</td><td>$0.00089</td><td>$2,300 node / 43 TB / 60 months</td></tr>
+<tr><td>Replication overhead (3×)</td><td>$0.00178</td><td>2× additional copies</td></tr>
+<tr><td>Power &amp; cooling</td><td>$0.00200</td><td>2 kW/node × $0.06/kWh</td></tr>
+<tr><td>Network (replication traffic)</td><td>$0.00050</td><td>Cross-DC replication</td></tr>
+<tr><td>Labor (amortized)</td><td>$0.00002</td><td>$2M/year ÷ 100 PB</td></tr>
+<tr><td>Miscellaneous</td><td>$0.00030</td><td>SSD cache, monitoring</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>$0.00549</strong></td><td><strong>≈ $0.066/GB/year</strong></td></tr>
+</tbody>
+</table>
+
+<p>Apple charges $0.99/month for 50 GB ($0.020/GB/month). Gross margin: <strong>~67%</strong>.</p>
+
+<h4>Cost per Inference Request</h4>
+<p>For an H100 serving 32 inferences/second (batch-32, 70B model): GPU depreciation ($0.000001/req) + power ($0.0000013/req) + interconnect ($0.000001/req) + network/storage ($0.000001/req) = <strong>~$0.000005/inference</strong>, or $0.50 per million inferences. At 10K QPS, infrastructure cost is ~$1.6M/year.</p>
+
+<h4>Cost per Active Device</h4>
+<p>The metric Apple leadership tracks. Total iCloud infrastructure cost / 1.5B active devices ≈ <strong>$8–12 per device per year</strong>. This informs pricing strategy and R&amp;D investment decisions.</p>
+
+
+  <h2 id="s3-depreciation">Depreciation Modeling</h2>
+
+<div class="math-block">
+<span class="math-label">Straight-Line Depreciation</span>
+$$\text{Annual Depreciation} = \frac{\text{Hardware Cost}}{\text{Useful Life (years)}}$$
+<span class="math-comment">CPU node ($70K, 5-year life) → $14K/year. GPU ($30K, 3-year life due to obsolescence) → $10K/year.</span>
+</div>
+
+<h4>Vintage Effects</h4>
+<p>Older hardware is fully depreciated (book value $0) so its incremental cost is just power + maintenance (~$5K/year vs. $14K/year for new). This incentivizes keeping old hardware — but it's less efficient (20% more power, 10% less throughput). The true TCO must account for depreciation, power, maintenance, performance degradation, and opportunity cost of datacenter real estate.</p>
+
+<h4>Double-Declining Balance (DDB)</h4>
+<p>Front-loads depreciation: Year 1 = $28K, Year 2 = $16.8K, Year 3 = $10K, Year 4 = $6K, Year 5 = $3.6K. Better reflects GPU value curves where technology leapfrogs make older GPUs less valuable quickly.</p>
+
+
+  <h2 id="s3-energy">Energy Cost Modeling</h2>
+
+<div class="math-block">
+<span class="math-label">Power Cost Model</span>
+$$\text{Annual Power Cost} = P_\text{peak} \times \text{CF} \times 8760 \times \text{Price}_\text{kWh}$$
+<span class="math-comment">For a 60 MW DC at 60% capacity factor, $0.06/kWh: $18.9M/year. PUE of 1.20 adds 20% overhead for cooling.</span>
+</div>
+
+<p>GPU-heavy LLM inference is power-intensive: 447 H100s × 700W = 313 kW IT power. With PUE 1.20: 375 kW facility power. Annual energy cost: <strong>~$138M</strong> for a 10K QPS inference service.</p>
+
+<h4>Renewable PPAs</h4>
+<p>Apple's 100% renewable commitment uses long-term Power Purchase Agreements: 10–20 year contracts at $0.04–$0.07/kWh (cheaper than escalating grid rates). Over 20 years, renewable PPAs save ~40% vs. retail grid electricity.</p>
+
+<h4>Carbon-Aware Scheduling</h4>
+<p>Grid carbon intensity varies hourly (500–800 g CO₂/kWh during fossil peak, 50–200 during renewable peak). Shift deferrable batch workloads to low-carbon windows. This creates a multi-objective optimization: minimize both cost and carbon emissions, subject to latency SLOs.</p>
+
+
+  <h2 id="s3-shadow">Shadow Prices &amp; Marginal Cost</h2>
+
+<div class="card accent">
+<div class="card-title">Shadow Prices from LP Dual Variables</div>
+<p>If the dual variable for the GPU constraint is high (e.g., λ<sub>GPU</sub> = $15/GPU/year) but storage is low (λ<sub>stor</sub> = $2/TB/year), GPUs are the <strong>economic bottleneck</strong>. Each additional GPU saves $15 in system cost — directly informing procurement priorities. Use duals to:</p>
+<ul>
+  <li>Prioritize hardware procurement (invest where duals are highest)</li>
+  <li>Negotiate budget (argue for CAPEX if dual on budget constraint μ > 0.2, meaning $1 CAPEX → $5 OPEX savings)</li>
+  <li>Guide build-vs-buy decisions (if dual on own-DC constraint > colocation cost, build more DCs)</li>
+</ul>
+</div>
+
+<p><strong>Marginal vs. fixed cost:</strong> Short-term scaling cost is mostly marginal (each additional VM costs power + licensing). Long-term expansion has large fixed costs ($600M DC) amortized across many units. The optimization must use amortized cost, not just marginal — otherwise it under-invests in infrastructure that has high upfront cost but low per-unit marginal cost.</p>
+
+
+</div>
+
+<div class="section" id="s4">
+  <span class="section-number">TOPIC 4 OF 6</span>
+  <h1>Optimization <span class="thin">Formulations</span></h1>
+  <p class="lead">This is your strength as an optimization practitioner. Lean into LP, MIP, bin packing, robust optimization, and decomposition methods — all applied to iCloud capacity planning.</p>
+
+  <h2 id="s4-lp">Linear Programming for Workload Allocation</h2>
+
+<p>The canonical workload allocation is a multi-commodity flow problem. Let \(w \in W\) be workloads (Photo Sync, LLM Inference, Private Relay), \(i \in R\) be regions, \(d_w\) demand, \(C_{i,w}\) capacity, \(c_{i,w}\) cost, and \(x_{i,w}\) the fraction of workload \(w\) served from region \(i\).</p>
+
+<div class="math-block">
+<span class="math-label">Workload Allocation LP</span>
+$$\min \sum_{w \in W} \sum_{i \in R} d_w \cdot x_{i,w} \cdot c_{i,w}$$
+$$\text{s.t.} \quad \sum_{w} d_w \cdot x_{i,w} \leq C_{i,w} \;\;\forall i \quad \text{(capacity)}$$
+$$\sum_{i} L_{u,i} \cdot x_{i,w} \leq L_{\max,w} \;\;\forall u,w \quad \text{(latency SLO)}$$
+$$\sum_{i} x_{i,w} = 1 \;\;\forall w, \quad x_{i,w} \geq 0$$
+</div>
+
+<h4>Dual Variable Interpretation</h4>
+<p>The dual \(\lambda_i\) on capacity constraints = marginal value of one more unit of capacity in region \(i\). The dual \(\mu_w\) on demand = marginal cost of serving one more unit of workload \(w\). If \(\lambda_\text{US-West}\) is 3× \(\lambda_\text{EU}\), prioritize GPU investment in US-West.</p>
+
+<div class="card accent">
+<div class="card-title">Concrete Example: 5-Region Allocation</div>
+<p>Allocating Photo Sync (500 PB/mo), LLM Inference (50M req/day), and Private Relay (2 Pbps) across US-West, US-East, EU, Asia-Pacific, Canada. LP reveals: US-West is GPU-constrained (high λ), Canada has cheapest peering for Relay, EU has GDPR compliance surcharge. Dual analysis directly informs where to invest next.</p>
+</div>
+
+
+  <h2 id="s4-mip">Mixed Integer Programming (MIP)</h2>
+
+<p>Binary decisions require integer variables: build a DC (\(y_k \in \{0,1\}\)), activate GPU cluster, select hardware type. MIP captures the "lumpiness" of infrastructure — you can't build half a data center.</p>
+
+<div class="math-block">
+<span class="math-label">Fixed-Charge Facility Location MIP</span>
+$$\min \sum_{i} F_i \cdot y_i + \sum_{w,i} d_w \cdot x_{i,w} \cdot c_{i,w}$$
+$$\text{s.t.} \quad \sum_{w} d_w \cdot x_{i,w} \leq M \cdot y_i \;\;\forall i \quad \text{(big-M linking)}$$
+$$x_{i,w} \leq y_i \;\;\forall i,w \quad \text{(can only serve if built)}$$
+$$y_i \in \{0,1\}, \quad x_{i,w} \geq 0$$
+<span class="math-comment">F<sub>i</sub> = annualized fixed cost of DC in region i ($50–200M/year). M = upper bound on total demand (big-M).</span>
+</div>
+
+<h4>Hardware Type Selection</h4>
+<p>Choose between GPU types: \(h_{i,t} \in \mathbb{Z}_+\) = number of hardware type \(t\) (H100, A100, custom Apple silicon) in region \(i\). Each type has different cost, memory, throughput, and power profiles. The MIP selects the cost-minimizing fleet mix.</p>
+
+<h4>MIP Gap and Solver Strategy</h4>
+<p>Branch-and-bound with cutting planes (CPLEX, Gurobi). For strategic planning, a <strong>1–2% MIP gap</strong> is often acceptable — the model uncertainty exceeds solver imprecision. Typical solve times: 100-variable MIP in seconds, 10,000-variable in minutes to hours.</p>
+
+
+  <h2 id="s4-bin">Bin Packing for Server Allocation</h2>
+
+<p>Multi-dimensional bin packing is NP-hard: pack workloads (each requiring CPU + memory + GPU + network) into heterogeneous servers. Each workload is a vector \(\mathbf{r}_j = (r_j^\text{CPU}, r_j^\text{mem}, r_j^\text{GPU}, r_j^\text{net})\) and each server is a bin with capacity vector \(\mathbf{B}_i\).</p>
+
+<h4>Heuristics</h4>
+<table>
+<thead><tr><th>Algorithm</th><th>Strategy</th><th>Quality</th><th>Speed</th></tr></thead>
+<tbody>
+<tr><td>First Fit Decreasing (FFD)</td><td>Sort workloads by largest dimension, assign to first bin that fits</td><td>Good (within 11/9 OPT + 6/9)</td><td>O(n log n)</td></tr>
+<tr><td>Best Fit</td><td>Assign to bin with least remaining capacity</td><td>Similar to FFD</td><td>O(n log n)</td></tr>
+<tr><td>Greedy packing</td><td>Assign to bin maximizing utilization of bottleneck dimension</td><td>Good for multi-dim</td><td>O(n²)</td></tr>
+</tbody>
+</table>
+
+<h4>Fragmentation Metrics</h4>
+<p>Fragmentation ratio = (total free capacity − max contiguous free block) / total free capacity. If fragmentation > 20%, trigger workload compaction during low-traffic windows. In your MIP, model fragmentation as a waste factor: \(C_\text{eff} = (1 - w) \times C_\text{nominal}\) where \(w \approx 0.10\text{–}0.20\).</p>
+
+
+  <h2 id="s4-robust">Robust Optimization</h2>
+
+<p>Instead of point forecasts, use uncertainty sets:</p>
+
+<div class="math-block">
+<span class="math-label">Robust Capacity Planning</span>
+$$\min_x \max_{D \in \mathcal{D}} \;\text{cost}(x, D)$$
+$$\mathcal{D} = \left\{ D : D_r = \hat{D}_r(1+\delta_r),\; |\delta_r| \leq 0.15,\; \sum_r |\delta_r| \leq \Gamma \right\}$$
+<span class="math-comment">Budget of uncertainty Γ ≈ 1.2–1.5 prevents all regions spiking simultaneously. Choose Γ so actual demands stay within D 99% of the time.</span>
+</div>
+
+<h4>Comparison of Approaches</h4>
+<table>
+<thead><tr><th>Approach</th><th>Conservatism</th><th>Typical Over-Provision</th><th>Best For</th></tr></thead>
+<tbody>
+<tr><td>Deterministic LP</td><td>None (uses point forecast)</td><td>0%</td><td>Stable, predictable demand</td></tr>
+<tr><td>Robust optimization</td><td>High (worst-case within set)</td><td>15–20%</td><td>High-stakes (GPU, where under-provisioning is costly)</td></tr>
+<tr><td>Chance-constrained</td><td>Moderate</td><td>5–10%</td><td>\(P(\text{demand} \leq \text{capacity}) \geq 0.99\)</td></tr>
+<tr><td>Stochastic programming</td><td>Risk-neutral (expected cost)</td><td>5–15%</td><td>Multiple scenarios, large-scale planning</td></tr>
+</tbody>
+</table>
+
+
+  <h2 id="s4-decomp">Decomposition for Scalability</h2>
+
+<p>A monolithic global MIP won't scale — Apple has dozens of regions, hundreds of service types, thousands of server types. Decomposition is essential.</p>
+
+<h4>Three Decomposition Axes</h4>
+<div class="card success">
+<div class="card-title">1. Temporal Decomposition (Rolling Horizon)</div>
+<p>Solve next 3 months at weekly granularity, months 3–12 at monthly, years 1–3 at quarterly. Link via boundary conditions: the 3-month solution respects capacity constraints from the long-term roadmap.</p>
+</div>
+
+<div class="card accent">
+<div class="card-title">2. Spatial Decomposition (Dual/Lagrangian)</div>
+<p>Partition into regional clusters (US, EMEA, APAC). Solve each region's MIP independently. Relax coupling constraints (cross-region latency, replication) into the objective via Lagrangian multipliers. Iterate via subgradient optimization until multipliers converge.</p>
+</div>
+
+<div class="card warning">
+<div class="card-title">3. Service-Level Decomposition</div>
+<p>Partition by workload type (LLM inference, storage, backup). Master problem allocates shared resources; service subproblems optimize within their allocation. Uses Benders decomposition to separate integer (strategic) from continuous (operational) decisions.</p>
+</div>
+
+<p>Combined: temporal (3 levels) × spatial (5–7 clusters) × service (5 categories) = <strong>~90 tractable subproblems</strong>, each solvable in seconds. Re-solve the monolithic problem quarterly to measure and correct decomposition drift.</p>
+
+
+</div>
+
+<div class="section" id="s5">
+  <span class="section-number">TOPIC 5 OF 6</span>
+  <h1>Service-Specific <span class="thin">Planning Nuances</span></h1>
+  <p class="lead">"Forecast accuracy is necessary but not sufficient. What matters is mapping demand into resource-constrained, latency-aware allocation." Show the interviewer you understand how different iCloud workloads demand fundamentally different planning approaches.</p>
+
+  <h2 id="s5-storage">iCloud Storage</h2>
+
+<p>iCloud Storage has a steady, predictable growth curve driven by device sales and storage tier adoption. It's the easiest service to forecast but hardest to provision quickly (storage hardware has long lead times).</p>
+
+<h4>Key Planning Characteristics</h4>
+<ul>
+  <li><strong>Replication factor:</strong> 3-way for hot data, erasure coding for cold — hybrid approach optimizes cost vs. latency</li>
+  <li><strong>Hot/warm/cold tiering:</strong> Photos accessed frequently in first week (hot → SSD), then rapidly cool. Model data temperature distribution to size each tier.</li>
+  <li><strong>Migration planning:</strong> Moving data between tiers/regions without disrupting service. Background migration during off-peak windows at controlled I/O rates.</li>
+  <li><strong>Metadata servers:</strong> Billions of file records require their own capacity plan — metadata grows faster than data if file count increases faster than file size.</li>
+  <li><strong>Deduplication/compression:</strong> 20–30% savings on raw capacity. Must model compression ratios that vary by content type (photos compress 10%, already-compressed video: 2%).</li>
+</ul>
+
+
+  <h2 id="s5-relay">Private Relay</h2>
+
+<p>Network bandwidth is the primary constraint, not compute. The two-hop architecture (user → Proxy 1 → Proxy 2 → destination) means capacity planning must account for both hops independently.</p>
+
+<h4>Unique Challenges</h4>
+<ul>
+  <li><strong>Encryption CPU overhead:</strong> TLS handshakes and data encryption consume significant CPU — each connection requires ~5ms of crypto compute, limiting per-core connection rates.</li>
+  <li><strong>Geo-distributed load:</strong> Users expect relay nodes within 50ms, requiring 50+ PoPs globally. Small PoPs have less statistical multiplexing → higher variance in utilization.</li>
+  <li><strong>Peering relationships:</strong> Egress cost optimization is critical. A well-negotiated peering agreement can reduce transit costs by 80%.</li>
+  <li><strong>Traffic patterns:</strong> Correlated with browsing activity (evening peaks, geographic patterns). Weekend traffic is 20–30% lower than weekdays.</li>
+</ul>
+
+
+  <h2 id="s5-pcc">Private Compute Cloud</h2>
+
+<p>Private Compute Cloud (PCC) runs sensitive ML inference in Apple's secure enclaves, with strict isolation guarantees.</p>
+
+<h4>Planning Challenges</h4>
+<ul>
+  <li><strong>Burst traffic:</strong> Triggered by on-device events (Siri queries, photo analysis, writing suggestions). Pareto-distributed — 10% of users generate 70% of requests.</li>
+  <li><strong>Compliance isolation:</strong> Data cannot leave certain jurisdictions (GDPR). Compute must happen in approved regions. This prevents cross-region load balancing.</li>
+  <li><strong>Stateless compute:</strong> Each request is independent (no persistent server state). Simplifies capacity planning (no state migration) but eliminates request coalescing.</li>
+  <li><strong>Secure enclave capacity:</strong> Specialized hardware limits supply. Cannot easily repurpose general-purpose GPUs for PCC workloads.</li>
+</ul>
+
+<p>Model as a two-tier queuing system: reserved capacity for baseline (deterministic) + shared burst pool (stochastic). Optimize the split to minimize cost subject to p99 &lt; 200ms SLO.</p>
+
+
+  <h2 id="s5-llm">LLM Inference</h2>
+
+<h4>GPU Memory Fragmentation</h4>
+<p>After allocating several models, remaining memory may be in small unusable chunks. A 70B model requires ~140 GB contiguous across 4 H100s. If memory is fragmented across those GPUs, the model can't be loaded even though aggregate free memory is sufficient.</p>
+
+<h4>Batch Size vs. Latency Tradeoff</h4>
+<p>Larger batches improve throughput (GPU utilization) but increase per-request latency. For interactive Siri queries (2s SLO), batch size is limited to ~8–16. For background tasks (writing suggestions), batch-32 or batch-64 is acceptable.</p>
+
+<h4>Key Modeling Metrics</h4>
+<ul>
+  <li><strong>Token throughput:</strong> tokens/second per GPU — influenced by model size, batch size, quantization level, and hardware</li>
+  <li><strong>KV-cache management:</strong> Memory grows linearly with sequence length. A 4K-token context uses ~500 MB of KV-cache per layer on H100</li>
+  <li><strong>Quantization tradeoffs:</strong> INT8 halves memory (fits 140B on 4 H100s), INT4 quarters it — but quality degradation may be unacceptable for complex reasoning tasks</li>
+  <li><strong>Continuous batching &amp; paged attention:</strong> vLLM-style techniques improve GPU utilization from ~40% to ~70% by eliminating idle time between requests</li>
+</ul>
+
+<h4>Model Rollout Capacity Planning</h4>
+<p>When Apple releases a new model version, plan the rollout: shadow deploy (run both old and new simultaneously), canary (5% traffic), progressive rollout (25% → 50% → 100%). Each stage requires temporary 2× GPU capacity. Budget this in your medium-term plan.</p>
+
+
+  <h2 id="s5-edge">Edge Cloud</h2>
+
+<p>Micro data centers at metro level or CDN PoPs, serving latency-sensitive workloads (&lt;10ms SLO).</p>
+
+<h4>Planning Challenges</h4>
+<ul>
+  <li><strong>Small footprint, high variance:</strong> Less statistical multiplexing means utilization swings wildly. A 10-GPU edge cluster can go from 20% to 90% utilization in minutes.</li>
+  <li><strong>Overprovisioning for reliability:</strong> N+1 redundancy at small scale is expensive (11 nodes for 10 needed = 10% overhead). At large scale, the overhead is &lt;1%.</li>
+  <li><strong>Edge-cloud hybrid:</strong> Run latency-sensitive preprocessing at edge (object detection, speech recognition first pass), offload heavy compute to central DC (LLM reasoning, complex search).</li>
+  <li><strong>Geographic expansion:</strong> As Apple Intelligence grows, edge PoPs must expand from 50 to 200+. Each new PoP requires site selection, hardware procurement, and network provisioning — a 6-month project.</li>
+</ul>
+
+
+</div>
+
+<div class="section" id="s6">
+  <span class="section-number">TOPIC 6 OF 6</span>
+  <h1>Risk, Fragmentation <span class="thin">&amp; Reliability</span></h1>
+  <p class="lead">Apple deeply cares about reliability and user experience. You must demonstrate awareness of fragmentation, headroom policies, failover modeling, what-if scenarios, and sustainability constraints.</p>
+
+  <h2 id="s6-frag">Fragmentation &amp; Stranded Capacity</h2>
+
+<p>Fragmentation is pure waste. It manifests at multiple levels:</p>
+
+<table>
+<thead><tr><th>Level</th><th>Example</th><th>Impact</th></tr></thead>
+<tbody>
+<tr><td>GPU Memory</td><td>After allocating 15 × 5 GB models, largest free block is 5 GB (can't fit a 10 GB model)</td><td>10–25% effective capacity loss</td></tr>
+<tr><td>Rack</td><td>60% CPU utilization, 95% memory → 40% CPU stranded</td><td>Resource waste, cost inflation</td></tr>
+<tr><td>Cluster</td><td>90% of machines are single-GPU, can't allocate 4-GPU sets for 70B models</td><td>Entire GPU fleet partially unusable</td></tr>
+</tbody>
+</table>
+
+<h4>Mitigation Strategies</h4>
+<ul>
+  <li><strong>Compaction:</strong> Periodically defragment GPU memory by re-allocating models contiguously (100–500ms latency spike per model, schedule during 2–4 AM)</li>
+  <li><strong>Memory pooling:</strong> Allocate in fixed-size buckets (10 GB, 20 GB, 40 GB) — trades flexibility for fragmentation-free allocation</li>
+  <li><strong>Fragmentation-aware scheduling:</strong> Don't just ask "does this fit?" — ask "does placing it here create fragmentation?"</li>
+  <li><strong>MIP waste factor:</strong> \(C_\text{eff} = (1-w) \times C_\text{nominal}\) where \(w \approx 0.20\). Use \(C_\text{eff}\) in demand constraints.</li>
+</ul>
+
+
+  <h2 id="s6-headroom">Headroom Policies</h2>
+
+<div class="math-block">
+<span class="math-label">Headroom Formula</span>
+$$\text{Provisioned} = \frac{p99 \;\text{demand}}{1 - \text{buffer}} = p99 \;\text{demand} \times \frac{1}{u_\text{target}}$$
+<span class="math-comment">Typical buffers: 15–25% for compute (can scale faster), 30–40% for storage (slower to provision).</span>
+</div>
+
+<h4>Dynamic Headroom</h4>
+<p>Adjust buffer based on forecast confidence: high confidence (prediction error &lt;5% for 4 weeks) → reduce headroom to 15%. Low confidence (error &gt;15%) → increase to 25%.</p>
+
+<div class="math-block">
+$$u_\text{target} = 60\% + 20\% \times (1 - \text{forecast\_error})$$
+</div>
+
+<h4>Cost-Reliability Frontier</h4>
+<p>For each candidate headroom level, simulate realistic demand scenarios (Monte Carlo) and measure SLO violations. The optimal headroom is where marginal cost of additional headroom equals the expected cost of SLO violations it would prevent.</p>
+
+<table>
+<thead><tr><th>Headroom</th><th>CAPEX/year</th><th>SLO Compliance</th><th>Marginal Cost per 0.1%</th></tr></thead>
+<tbody>
+<tr><td>15%</td><td>$8.5M</td><td>99.5%</td><td>—</td></tr>
+<tr><td>20%</td><td>$10.0M</td><td>99.8%</td><td>$500K</td></tr>
+<tr><td>25%</td><td>$11.5M</td><td>99.9%</td><td>$1.5M</td></tr>
+<tr><td>30%</td><td>$12.5M</td><td>99.95%</td><td>$2.0M</td></tr>
+</tbody>
+</table>
+
+
+  <h2 id="s6-failover">Failover &amp; Disaster Recovery</h2>
+
+<h4>Redundancy Models</h4>
+<ul>
+  <li><strong>N+1:</strong> One spare for every N active units. Cost overhead: 1/N (10% for N=10).</li>
+  <li><strong>Active-active:</strong> All regions serve traffic; failure redistributes load. Better utilization, more complex routing.</li>
+  <li><strong>Active-passive:</strong> Standby region activates on failure. Simpler, but idle resources waste money.</li>
+</ul>
+
+<h4>Region Outage Scenario</h4>
+<div class="card danger">
+<div class="card-title">What-If: US-East Goes Offline (20% Global GPU Capacity)</div>
+<p><strong>Minutes 0–30:</strong> Geo-DNS failover routes traffic to US-West and EU. Latency increases +80ms for US users. US-West jumps from 65% → 85% utilization.</p>
+<p><strong>Hours 1–24:</strong> Only 15% headroom left. Activate pre-provisioned cloud burst capacity (50K on-demand GPUs). Apply 5% rate-limiting to non-critical workloads.</p>
+<p><strong>Days 1–14:</strong> Emergency GPU procurement at premium. Gradual recovery. Total cost: ~$5M (vs. $20M SLA penalty if availability had dropped to 95%).</p>
+</div>
+
+<h4>Graceful Degradation Priority</h4>
+<p>Which services shed load first? Ordered by essentiality score (criticality × revenue impact × SLA penalty):</p>
+<ol>
+  <li>Analytics/Recommendations (shed first — lowest impact)</li>
+  <li>LLM inference (degrade to smaller models)</li>
+  <li>iCloud Photo Sync (defer background sync)</li>
+  <li>iMessage / Core Mail (shed last — highest criticality)</li>
+</ol>
+
+
+  <h2 id="s6-whatif">What-If Scenario Planning</h2>
+
+<h4>Critical Scenarios to Model</h4>
+
+<div class="card warning">
+<div class="card-title">20% LLM Traffic Surge</div>
+<p>A viral Apple Intelligence feature (e.g., Image Understanding) drives 20% more inference requests overnight. Do you have GPU headroom? At 70% target utilization with 30% headroom, you can absorb this — but only temporarily. If sustained, medium-term replan must accelerate GPU procurement.</p>
+</div>
+
+<div class="card danger">
+<div class="card-title">Supply Chain Disruption</div>
+<p>GPU delivery delayed 3 months due to geopolitical event. Fallback: (1) multi-vendor strategy (30% AMD/AWS Trainium inventory), (2) shift to CPU-based inference for non-critical workloads (1000× slower, acceptable for batch), (3) reduce batch sizes and accept lower throughput.</p>
+</div>
+
+<div class="card accent">
+<div class="card-title">New Product Launch (Apple Vision Pro)</div>
+<p>3× Private Compute traffic for spatial computing features. Lead time needed: 6–9 months for GPU procurement. Product roadmap must feed into capacity planning 12+ months before launch. Use Monte Carlo simulation with demand uncertainty to size the procurement order.</p>
+</div>
+
+
+  <h2 id="s6-sustain">Sustainability Constraints</h2>
+
+<p>Apple's carbon neutrality commitment adds real constraints to the optimization:</p>
+
+<ul>
+  <li><strong>Carbon-aware scheduling:</strong> Shift batch workloads to regions with cleaner energy grids during peak renewable hours. This may conflict with cost optimization (lowest-cost region ≠ lowest-carbon region).</li>
+  <li><strong>PPA planning:</strong> Long-term renewable energy contracts (10–20 years) at fixed prices. Must be co-optimized with DC location decisions.</li>
+  <li><strong>Water usage:</strong> Cooling in drought-prone regions (Arizona, parts of California) faces water restrictions. Air-cooled or liquid-immersion alternatives have different cost/efficiency profiles.</li>
+  <li><strong>Environmental reporting:</strong> Capacity planning feeds into Apple's annual environmental reports. Track carbon per workload, per region, per service.</li>
+</ul>
+
+<div class="math-block">
+<span class="math-label">Multi-Objective: Cost + Carbon</span>
+$$\min \;\alpha \sum_{i} c_i x_i + (1-\alpha) \sum_{i} e_i x_i$$
+<span class="math-comment">Where c<sub>i</sub> = cost per unit in region i, e<sub>i</sub> = carbon emissions per unit in region i, and α balances cost vs. sustainability. Apple likely uses α ≈ 0.7 (cost-primary, carbon-aware).</span>
+</div>
+
+
+</div>
+
+<div class="section" id="qa">
+  <span class="section-number">INTERVIEW Q&amp;A</span>
+  <h1>Interview <span class="thin">Questions &amp; Model Answers</span></h1>
+  <p class="lead">15 senior-level questions with 5–6 sentence model answers, plus 2 follow-up questions each. Answers follow the framework: Clarify horizon → Identify bottleneck → Define cost function → Define constraints → Optimization approach → Robustness &amp; monitoring.</p>
+
+<div class="card accent">
+<div class="card-title">Answer Framework</div>
+<p><strong>1.</strong> Clarify horizon (short/medium/long) · <strong>2.</strong> Identify bottleneck resources · <strong>3.</strong> Define cost function · <strong>4.</strong> Define constraints · <strong>5.</strong> Explain optimization approach · <strong>6.</strong> Discuss robustness and monitoring</p>
+</div>
+
+<div class="divider" id="qa-topic-1-multi-horizon-planning">Topic 1: Multi-Horizon Planning</div>
+
+<div class="qa">
+  <div class="qa-question">Q1. How would you design a multi-horizon capacity planning system for Apple Intelligence's LLM inference infrastructure?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>I'd structure this across three distinct planning windows, each with different optimization characteristics. The <strong>short-term horizon (days–weeks)</strong> uses rolling forecasts of user engagement to adjust GPU cluster utilization through auto-scaling, batch scheduling, and model routing — here the bottleneck is GPU compute and memory bandwidth, constrained by power and cooling. The <strong>medium-term horizon (3–12 months)</strong> uses growth curves and product roadmap information to guide procurement: which regions to expand, which GPU hardware to order, when to retire legacy infrastructure. The objective minimizes total cost of ownership including acquisition, power, and depreciation. The <strong>long-term horizon (1–3 years)</strong> aligns capacity investments with platform evolution — new chip architectures, model sizes, user growth — incorporating supply chain lead times. Each horizon feeds downward: long-term sets budget constraints for medium-term; medium-term constrains the hardware mix available to short-term algorithms. Monitoring reconciles actual demand against forecasts quarterly, triggering replanning when error exceeds ±15%.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you prevent the "bullwhip effect" where small tactical forecast changes cause massive strategic procurement swings?</div>
+      <div class="followup-a">Use exponential smoothing and confidence intervals to dampen noise before feeding into strategic models. Strategic planning should rely on 13-week rolling aggregates and growth rates (e.g., 3.5% QoQ) rather than week-to-week fluctuations, with buffer stock policies that absorb short-term volatility.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: What triggers a full replanning cycle vs. incremental updates?</div>
+      <div class="followup-a">Incremental updates occur weekly for tactical horizon. Full strategic replanning triggers when: (1) cumulative forecast error exceeds ±15% over 4 weeks, (2) a major product announcement shifts demand curves, or (3) GPU supply constraints change materially.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q2. How would you structure the control loop for iCloud capacity planning to prevent oscillation between over- and under-provisioning?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>The control loop has four stages: <strong>(1) demand sensing</strong> from telemetry (request rates, GPU queue depth, inference latency); <strong>(2) state estimation</strong> using Kalman filtering to project 2-week and 6-week demand with confidence intervals; <strong>(3) capacity optimization</strong> that solves a constrained cost-minimization MIP; and <strong>(4) action execution</strong> (scaling VMs, initiating procurement, updating SLO targets). Oscillation emerges when feedback lag is long (procurement takes weeks) and control gains are aggressive. I'd mitigate this through <strong>deadbands</strong> — only scale up if demand exceeds 75% utilization for 2 consecutive weeks, scale down only below 40% for 3 weeks — and PID-style control adapted for discrete capacity steps. Maintaining a <strong>buffer stock</strong> (20–30% overprovision at peak) smooths demand spikes. Target utilization curves should vary by tier: latency-critical LLM inference at 60%, bulk storage replication at 75%.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you reconcile cost efficiency (high utilization) with reliability (SLO headroom)?</div>
+      <div class="followup-a">Define separate control loops with different targets: LLM inference maintains 55–65% utilization to guarantee p99 latency SLOs, while background batch processing targets 75–85%. Use service-level admission control to enforce these — queue new requests into the batch tier if inference utilization exceeds 65%.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: What happens if a major product launch doubles demand overnight?</div>
+      <div class="followup-a">Spike detection logic (demand increases >30% in 1 day) bypasses normal deadbands and triggers emergency scaling to 85% of previous peak capacity within hours, while parallel long-lead procurement is initiated. This is why we pre-negotiate cloud burst contracts.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="divider" id="qa-topic-2-resource-modeling">Topic 2: Resource Modeling</div>
+
+<div class="qa">
+  <div class="qa-question">Q3. How would you model the resource requirements for a new Apple Intelligence feature requiring both GPU inference and large-scale storage?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>I'd decompose requirements into three tiers: <strong>(1) inference-time resources</strong> — when on-device processing fails and falls back to cloud, each request needs ~0.8 CPU-seconds, 1 GPU-second on an L40, 2 GB peak activations, and 50 MB model weight reads; <strong>(2) post-inference storage</strong> — results stored durably with 3× replication across DCs; <strong>(3) operational overhead</strong> — logging, telemetry, garbage collection. For 250M daily cloud inference requests, this translates to ~2,300 continuous CPU cores and 313–447 H100 GPUs. Storage grows as \(250\text{M} \times 10\text{MB} \times 3 \times 365 \approx 275\text{ EB-years}\). I'd model these as coupled constraints in the MIP: GPU capacity gates the number of inference requests per region, while storage limits determine onboarding rate. The shadow prices (LP duals) guide procurement priorities — if the GPU dual is 3× the storage dual, each additional GPU is 3× more valuable than 1 TB of storage.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: What if model weights exceed local cache, forcing remote fetches?</div>
+      <div class="followup-a">Incorporate model weight fetch latency and bandwidth as an additional constraint. If 100 MB weights must traverse a 10 Gbps link, that adds ~10ms latency per inference. This may shift the optimizer to prefer locally-cached smaller models or concentrate the feature in fewer regions with warmed caches.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you handle the ramp-up period when adoption is uncertain?</div>
+      <div class="followup-a">Use robust optimization with a wide uncertainty set (±30%) during initial launch, narrowing to ±10% after 4 weeks of production telemetry. Deploy in 2–3 waves: 25% capacity at launch, scale to 50% in week 2 if adoption confirms forecast, full capacity by week 4.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q4. How do coupled resource constraints create stranded capacity, and how would you address it in your optimization model?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>Coupled constraints arise when resources are interdependent — a GPU can't function without sufficient memory bandwidth, power delivery, and cooling. Stranded capacity occurs when one resource hits its limit first, leaving others idle. For example, a DC with 1,000 GPUs but only 900 NVMe drives for model caching forces 100 GPUs idle — those GPUs represent $3M of stranded CAPEX. Another case: a cluster has plenty of single-GPU nodes but LLM inference requires 4-GPU tensor-parallel sets; 90% of single-GPU machines can't serve large models. In the MIP, I'd explicitly model paired resources with coupling constraints like \(y_r \geq 0.9 \times x_r\) ensuring each GPU has adequate NVMe backing. I'd also add a <strong>fragmentation penalty</strong> in the objective: penalize configurations where resource ratios deviate from the ideal "shape" for the target workload mix. The solution approach mirrors supply chain network design — just as I modeled lane/DC capacity balance at Walmart, here we balance compute/memory/storage ratios across regions.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you forecast which resource becomes the next bottleneck?</div>
+      <div class="followup-a">Track utilization trends across all dimensions (GPU at 72%, memory at 65%, NVMe at 58%). Project forward 6 months at current growth rates. NVMe becomes the bottleneck in ~4 months — pre-order now given 6-month procurement lead time.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Can stranded capacity be repurposed for other services?</div>
+      <div class="followup-a">Partially — if NVMe-constrained GPUs can't run LLM inference, reroute them to lighter workloads like image encoding. But this is suboptimal compared to rebalancing. Quantify the throughput loss and compare against the cost of rebalancing hardware.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="divider" id="qa-topic-3-cost-modeling">Topic 3: Cost Modeling</div>
+
+<div class="qa">
+  <div class="qa-question">Q5. Walk me through how you'd build a cost model for Apple's LLM inference service, from hardware acquisition to per-request unit economics.</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>A comprehensive cost model spans five layers. <strong>(1) Hardware acquisition:</strong> an H100 GPU TCO = purchase ($30K) + installation ($5K) + power supply ($8K) over a 3–4 year lifespan, amortized to ~$12–14K/year or ~$1.60/hour. <strong>(2) Hosting infrastructure:</strong> rack space ($15K/year), cooling (700W × $0.06/kWh × 8760h = $306/year), networking ($2K/year per GPU). <strong>(3) Software/platform:</strong> model serving stack, telemetry, ~$500/GPU/year. <strong>(4) Operational overhead:</strong> on-call, maintenance (10% of hardware cost). <strong>(5) Unit economics:</strong> an H100 delivers ~150 tokens/sec for a 70B model. Over one year: 4.73B tokens. At ~$40K/year amortized cost, that's $0.0085/1K tokens. For a typical request (500-token prompt + 200-token response): ~$0.006. I validate against production metrics quarterly and adjust for utilization factor — at 65% average utilization, effective cost per token rises by \(1/0.65\) ≈ 54%.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do GPU prices and technology changes affect the model?</div>
+      <div class="followup-a">Re-baseline quarterly using vendor quotes. If H200s launch at 1.3× price but 2× memory, recompute TCO per token and identify which regions/models should migrate. Use a rolling portfolio of GPU vintages to amortize obsolescence risk.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you handle the gap between accounting depreciation and economic depreciation?</div>
+      <div class="followup-a">Accounting uses straight-line (equal annual charge). Economic value drops faster — a 2-year-old GPU may be worth 40% of original due to newer alternatives. For capacity planning, use economic depreciation (front-loaded) to avoid keeping expensive, inefficient hardware too long.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q6. How would you use shadow prices (LP duals) to guide hardware procurement decisions at Apple?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>Shadow prices reveal the marginal value of relaxing each constraint. In our capacity LP, the dual \(\lambda_r\) on the demand constraint for region \(r\) represents: "each additional unit of capacity here saves \(\lambda_r\) dollars of system cost." If \(\lambda_\text{US-East} = \$15\)/GPU/year but \(\lambda_\text{EU} = \$8\)/GPU/year, we should prioritize US-East expansion. The dual \(\mu\) on the global budget constraint tells us: each additional dollar of CAPEX saves \(\mu\) in operational costs. If \(\mu = 0.25\), marginal CAPEX investment yields 4× return within the planning horizon — a strong argument for leadership to approve additional budget. I update duals monthly as demand shifts; they guide both procurement timing (if \(\lambda\) spikes, order urgently) and sourcing decisions (favor suppliers/regions that lower the binding dual). This approach directly parallels how I used dual values from the Walmart import routing MIP to prioritize lane investments.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: What if duals diverge wildly — shouldn't you just allocate everything to the cheapest region?</div>
+      <div class="followup-a">No — the LP already accounts for latency, data residency, and reliability constraints. Wild dual divergence actually signals that those constraints are binding. If EU has high duals due to GDPR compliance overhead, the solution is to invest in EU-local capacity, not to route EU users to cheaper US regions.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you handle GPU supply constraints when the dual suggests buying more?</div>
+      <div class="followup-a">Add supply constraints \(x_r \leq S_r\) (max GPUs available from NVIDIA). The dual on this constraint reveals the opportunity cost: if you could buy 100 more H100s at a premium (secondary market), the dual tells you whether the premium is worth paying.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="divider" id="qa-topic-4-optimization-formulations">Topic 4: Optimization Formulations</div>
+
+<div class="qa">
+  <div class="qa-question">Q7. Formulate the data center expansion problem as a MIP. What are the key decision variables, constraints, and objective?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>Define the problem over a 12-month horizon with monthly time steps \(t\) and regions \(r\). <strong>Decision variables:</strong> \(x_{r,t}\) = GPU units procured (continuous), \(z_{r,t} \in \{0,1\}\) = build new DC facility, \(s_{r,t}\) = GPU inventory at month end. <strong>Objective:</strong> \(\min \sum_{r,t} [c_r x_{r,t} + f_r z_{r,t} + h_r s_{r,t} + p_r u_{r,t}]\) minimizing procurement, facility, holding, and operational costs. <strong>Key constraints:</strong> (1) inventory balance: \(s_{r,t} = s_{r,t-1} + x_{r,t} - u_{r,t}\); (2) demand satisfaction: \(u_{r,t} \geq D_{r,t}\); (3) facility linking: \(u_{r,t} \leq C_r \cdot z_{r,t}\); (4) lead time: orders at \(t\) available at \(t + \tau\); (5) global budget: \(\sum c_r x_{r,t} \leq B\). This is a convex MIP solvable in seconds for 4 regions × 12 months via branch-and-bound. For 20+ regions, I'd use Lagrangian relaxation or Benders decomposition to maintain tractability.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you incorporate demand uncertainty?</div>
+      <div class="followup-a">Extend to stochastic MIP: add scenario dimension ω ∈ {base, high, low} with probabilities. Replace deterministic D with D(ω) and solve for expected cost across scenarios. This yields more robust facility decisions that perform well across demand outcomes.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Can you reuse hardware from decommissioned DCs?</div>
+      <div class="followup-a">Yes — add variable y(r,t) = refurbished GPUs from retiring facilities. Modify inventory balance to include y(r,t) as supply. Penalize with a slight cost premium (lower reliability, older technology) but allow if the dual value justifies it.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q8. A monolithic optimization for all of Apple's capacity planning won't scale. How would you decompose the problem?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>I'd combine three decomposition axes. <strong>Temporal:</strong> solve next 3 months at weekly granularity, months 3–12 at monthly, years 1–3 at quarterly — linked via boundary conditions where each horizon's output constrains the next. <strong>Spatial:</strong> partition into 5–7 regional clusters (US, EMEA, APAC, etc.), solve each region's MIP independently, then use Lagrangian relaxation to handle cross-region coupling constraints (replication, latency). Iterate via subgradient optimization until multipliers converge. <strong>Service-level:</strong> partition by workload type (LLM inference, storage, relay), solve a master problem that allocates shared resources, then service subproblems optimize within their allocation. Combined: 3 temporal levels × 6 spatial clusters × 5 service categories = ~90 tractable subproblems, each solvable in seconds. I validate optimality by solving the full monolithic problem quarterly (8–12 hour runtime) and measuring the gap — if decomposition gap exceeds 5%, tighten coupling cuts.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you ensure the decomposed solution stays close to globally optimal?</div>
+      <div class="followup-a">Solve the LP relaxation of the full problem as a lower bound and compare against the decomposed solution. If the gap is <5%, decomposition is acceptable. Add coupling cuts to tighten if needed.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How often do you re-couple subproblems to prevent drift?</div>
+      <div class="followup-a">Weekly/monthly: solve decomposed version. Quarterly: re-solve full monolithic problem to detect and correct suboptimality. This amortizes computational cost while bounding cumulative drift to <3%.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q9. How would you apply robust optimization to handle demand uncertainty in GPU capacity planning?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>I'd formulate as \(\min_x \max_{D \in \mathcal{D}} \text{cost}(x, D)\) where the uncertainty set uses a budget-of-uncertainty approach: \(\mathcal{D} = \{D : D_r = \hat{D}_r(1+\delta_r), |\delta_r| \leq 0.15, \sum_r |\delta_r| \leq \Gamma\}\). The budget parameter \(\Gamma \approx 1.2\text{–}1.5\) prevents the unrealistic scenario of all regions spiking simultaneously by 15%. I calibrate \(\Gamma\) from historical data so actual demands stay within \(\mathcal{D}\) 99% of the time. The inner maximization is a linear program solvable analytically via duality, yielding a tractable outer minimization. I implement as iterative cutting planes: solve the MIP for current \(x\), check if capacity holds for worst-case demand (solve the inner LP), if violated add a cut and re-solve. Robust optimization typically provisions 15–20% more than deterministic. To control conservatism, I use a "controllable robust" variant where mid-horizon adjustments are allowed as demand reveals itself — reducing the total over-provision to ~10%.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you choose the budget of uncertainty Γ?</div>
+      <div class="followup-a">Compute realized forecast errors over the past 12 months; fit a distribution and choose Γ such that actual demands remain in the uncertainty set 99% of the time. For iCloud's relatively stable services, Γ ≈ 1.2. For volatile LLM inference, Γ ≈ 1.8.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Doesn't robust optimization over-provision too much?</div>
+      <div class="followup-a">It can — typically 15–20% more than stochastic optimization. Mitigate by lowering Γ or using adaptive robust where you adjust capacity mid-horizon as demand reveals itself. Compare robust vs. stochastic solutions and choose based on the cost asymmetry of under- vs. over-provisioning.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="divider" id="qa-topic-5-service-specific-planning">Topic 5: Service-Specific Planning</div>
+
+<div class="qa">
+  <div class="qa-question">Q10. Compare and contrast capacity planning for iCloud Storage vs. LLM Inference. What makes each uniquely challenging?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p><strong>iCloud Storage</strong> has long planning horizons (9–12 months for DC construction and disk procurement), highly predictable demand (+15–20% YoY), and low churn (stored photos stay for years). The bottleneck is aggregate storage capacity with 3× replication overhead. Costs are dominated by hardware amortization and power. <strong>LLM Inference</strong> requires much shorter planning horizons (1–4 weeks) due to rapid model changes and volatile adoption curves — a new feature can grow 10× in 2 weeks. GPU compute and memory are the bottleneck, both perishable (idle GPU time = pure waste). Utilization is deliberately lower (~60%) to maintain p99 latency SLOs. The key differentiator: Storage uses conservative fixed allocations with quarterly replanning, while Inference uses aggressive auto-scaling with weekly optimization. Storage challenges include data gravity (can't easily move PBs between regions) and long commitment horizons. Inference challenges include rapid chip obsolescence (30% annual improvement), memory fragmentation, and the latency-throughput tradeoff in batching.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Can you share GPU capacity between Storage and Inference use cases?</div>
+      <div class="followup-a">Partially — Storage can use GPUs for compression/transcoding as low-priority batch work. Use weighted fair queuing: reserve 70% GPU capacity for Inference (QoS), overflow 30% to Storage batch jobs. If inference exceeds 70%, preempt Storage jobs.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you handle regional imbalance (high demand in one region, low in another)?</div>
+      <div class="followup-a">For Storage, accept imbalance — data residency laws prevent cross-region balancing. For Inference, aggressively route requests to underutilized regions (add 20ms latency penalty, but amortize CAPEX). Use geo-distribution as a cost lever.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q11. How would you plan capacity for Private Compute Cloud, given burst traffic patterns and compliance constraints?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>PCC is Apple's isolated compute environment where data never leaves the user's regional silo. <strong>Burst patterns</strong> follow a Pareto distribution: 10% of users generate 70% of requests. I'd model user request rates with a negative binomial distribution, aggregate across users to forecast peak-hour and p99 rates per region, with wider confidence intervals (±30%) since adoption is still ramping. <strong>Compliance constraints</strong> are hard: EU data stays in EU DCs (no cross-region load balancing), all operations are audit-logged (+10–20% storage overhead), encryption adds 2–3× CPU overhead, and SLOs are strict (p99 < 200ms). My approach: use a <strong>two-tier model</strong> — per-user reserved slices (deterministic, sized from historical patterns) plus a shared burst pool (stochastic, shared across users in a region). Optimize the reserved/burst split via convex optimization to minimize \(c_r \cdot r + c_b \cdot b\) where \(c_b > c_r\), subject to p99 < 200ms. Validate via Monte Carlo simulation of synthetic request traces through an M/G/c queueing model. Given the high regulatory risk, I'd err on the side of over-provisioning (40–50% headroom).</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you validate that SLOs are achievable with your capacity plan?</div>
+      <div class="followup-a">Run Monte Carlo simulations: generate Pareto-distributed arrival traces, feed into a queueing simulator (M/G/c with priority tiers), measure p99 latency. If >200ms, increase reserved capacity. Repeat until SLO is met in 99.5% of simulation runs.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: What if a user relocates (e.g., EU to US)?</div>
+      <div class="followup-a">Trigger a capacity re-optimization for both regions: release a reservation slot in EU, add to US. Execute in the weekly replan cycle with a coordinated data transfer during off-peak hours.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="divider" id="qa-topic-6-risk--reliability">Topic 6: Risk & Reliability</div>
+
+<div class="qa">
+  <div class="qa-question">Q12. How would you design a headroom policy for GPU capacity that balances cost efficiency with SLO reliability?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>I'd formalize this via a <strong>cost-reliability frontier</strong>. For each candidate headroom level \(h \in \{10\%, 15\%, 20\%, 25\%, 30\%\}\), run Monte Carlo simulations using the historical forecast error distribution and measure SLO violations (p99 latency exceeds target or requests rejected). For example: 20% headroom (\(u_\text{target}=80\%\)) costs $10M CAPEX/year and yields 99.8% SLO compliance; 30% costs $12.5M but yields 99.95%. The marginal cost is $2.5M for 0.15% more reliability. If SLA penalties are $500K per 0.1% violation, the improvement saves $750K — not worth it. If penalties are $2M per 0.1%, it saves $3M — invest. I'd also implement <strong>dynamic headroom</strong>: \(u_\text{target} = 60\% + 20\% \times (1 - \text{forecast\_error})\). High forecast confidence → lower headroom → lower cost. Low confidence → higher headroom → safer. Differentiate by service: LLM inference targets 55–65% utilization, batch replication targets 75–85%.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you differentiate headroom across services with different SLO requirements?</div>
+      <div class="followup-a">LLM inference (interactive, p99 < 100ms) targets 55–65% utilization with aggressive scale-up thresholds. Batch replication (background, p99 < 1 hour) targets 75–85% with conservative thresholds. Separate auto-scaling policies per service tier.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: What if headroom is breached despite the policy (unexpected 50% surge)?</div>
+      <div class="followup-a">Invoke degradation modes: (1) shed lowest-priority workloads, (2) activate token-bucket rate-limiting at 80% normal capacity, (3) enable cloud burst at premium cost, (4) reduce LLM batch sizes (p99 increases to 150ms but throughput jumps 30%). Run game-day exercises quarterly to validate.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q13. Walk through a what-if scenario: a major Apple data center region goes offline. How does your capacity plan handle it?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>Assume US-East (20% of global GPU capacity, 30% of US inference traffic) goes offline due to cooling failure. <strong>Pre-event design:</strong> 3× data replication, 99.9% SLA, 25% global headroom. <strong>Minutes 0–30:</strong> Geo-DNS failover re-routes traffic to US-West and EU. US users see +80ms latency increase. US-West utilization jumps from 65% to 85%, EU from 60% to 78%. <strong>Hours 1–24:</strong> Only 15% headroom remains. Activate pre-negotiated cloud burst capacity (50K on-demand GPUs at 2× cost). Apply 5% rate-limiting to non-critical workloads (image enhancement, not core Mail/Photos). <strong>Days 1–14:</strong> Emergency GPU procurement at premium ($500K expedite fee vs. normal 10-week delivery). Gradually restore US-East to 50% by day 7, full recovery by day 14. <strong>Total cost:</strong> ~$5M (burst + expedite + ops). Compare to $20M SLA penalty had availability dropped to 95%. The mitigation was worth 4× its cost. <strong>Design lesson:</strong> increase global headroom from 20% to 25%, and pre-negotiate cloud burst contracts tested monthly via chaos engineering.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Could better capacity planning have prevented this outage?</div>
+      <div class="followup-a">No — cooling failure is a reliability issue, not capacity. But capacity planning reduces impact by ensuring sufficient cross-region headroom, pre-negotiated burst contracts, and automated failover. More aggressive replication (4-way in critical regions) could further reduce blast radius.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you update your capacity plan after this incident?</div>
+      <div class="followup-a">Post-mortem quantifies the $5M cost. Propose design improvements: 25% headroom (was 20%), 4-way replication in US (33% cost increase). Run the business case: additional CAPEX of $2M/year prevents ~1.5 similar incidents over 5 years = $30M expected savings. Approve based on ROI.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q14. How does GPU memory fragmentation affect effective capacity, and what strategies would you recommend?</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>GPU memory fragmentation occurs when the largest contiguous free block can't accommodate a new model, even though aggregate free memory is sufficient. For example: an H100 has 80 GB; after allocating 15 × 5 GB models scattered across memory, the largest free block is only 5 GB — insufficient for a 10 GB model despite 5 GB total free. For Apple's LLM inference (70B model = 140 GB across 4 H100s in tensor parallel), fragmentation is severe and causes <strong>10–25% effective capacity loss</strong>. My strategies: (1) <strong>Compaction</strong> — periodically defragment by re-allocating models contiguously (100–500ms latency spike, schedule at 2–4 AM); (2) <strong>Memory pooling</strong> — allocate in fixed-size buckets (10/20/40 GB), trading flexibility for zero fragmentation; (3) <strong>Fragmentation-aware scheduling</strong> — use bin-packing FFD that considers not just "does it fit?" but "does placing it here create future fragmentation?"; (4) <strong>Paged attention</strong> (vLLM-style) — non-contiguous KV-cache allocation eliminates sequence-level fragmentation. In the MIP, model this as \(C_\text{eff} = (1-w) \times C_\text{nominal}\) with \(w = 0.20\). Monitor fragmentation ratio weekly; if persistently >15%, trigger compaction and adjust \(w\) upward in procurement planning.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you measure fragmentation in production?</div>
+      <div class="followup-a">Instrument GPU memory allocators to log per-GPU: total allocated, total free, and max-contiguous-free-block every hour. Fragmentation ratio = (total_free − max_free_block) / total_free. Alert if ratio exceeds 20% for any cluster.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Can you intentionally tolerate fragmentation to avoid compaction overhead?</div>
+      <div class="followup-a">No — the economics don't work. Tolerating 20% fragmentation on 100K GPUs wastes ~$2M/year of capacity, while compaction overhead is <$100K/year in operational cost. Always defragment.</div>
+    </div>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-question">Q15. Design a disaster recovery plan that handles simultaneous regional failures and supply chain shocks.</div>
+  <div class="qa-answer"><div class="qa-answer-content">
+    <p>I'd structure DR in three tiers. <strong>Tier 1 (single-region failure, ~1×/year):</strong> 25% global headroom absorbs traffic redistribution, cloud burst contracts provide 100K GPUs within 24 hours, automated geo-DNS failover tested quarterly. <strong>Tier 2 (multi-region simultaneous, ~1×/decade):</strong> air-gapped backups in geographically isolated cold storage (1-week recovery), "survival mode" where APIs return cached responses and writes queue locally until regions recover, service prioritization shedding analytics first, core Mail/Photos last. <strong>Tier 3 (supply chain shock, GPU shortage &gt;6 months):</strong> multi-vendor strategy (30% AMD/AWS Trainium), long-term supply contracts with NVIDIA locking 60% at fixed prices, hardware-agnostic inference stacks (portable across NVIDIA/AMD/custom), and graceful degradation — shift to CPU-based inference (1000× slower, acceptable for batch) and dynamic pricing to shed low-value requests. Triggers: region down &gt;6 hours → Tier 1; 2+ regions down → Tier 2; GPU lead times &gt;12 months → Tier 3. Annual DR drills simulate Tier 2 (3 regions offline) measuring recovery time, cost, and user-facing impact.</p>
+    <div class="followup">
+      <div class="followup-q">Follow-up: How do you choose which services to shed first?</div>
+      <div class="followup-a">Compute an essentiality score = criticality × revenue_impact × SLA_penalty. Rank: Mail/Photos (100), Cloud Backup (80), LLM Inference (50), Analytics (10). Shed lowest-score first. Update scores quarterly as product mix evolves.</div>
+    </div>
+    <div class="followup">
+      <div class="followup-q">Follow-up: Is 7-day recovery acceptable for cold storage?</div>
+      <div class="followup-a">For compliance archives, yes. For user data recovery (device loss), no — implement tiered recovery: hot backup (1-hour RTO), warm (1-day), cold (7-day). Most users hit the hot or warm tier; cold is for rare disaster recovery scenarios only.</div>
+    </div>
+  </div></div>
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+// Collapsible and QA toggle
+document.querySelectorAll('.collapsible-header, .qa-question').forEach(el => {
+  el.addEventListener('click', () => el.parentElement.classList.toggle('open'));
+});
+
+// Sidebar active link tracking
+const sections = document.querySelectorAll('.section, h2[id], h3[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-20% 0px -60% 0px' });
+sections.forEach(s => { if(s.id) observer.observe(s); });
+
+// Progress bar
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = h > 0 ? (window.scrollY / h) * 100 : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+});
+
+</script>
+</body>
+</html>
