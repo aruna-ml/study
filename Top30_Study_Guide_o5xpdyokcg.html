@@ -1,0 +1,2640 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Apple Sr. MLE Interview — Top 30 LeetCode Study Guide</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root { --bg:#fff; --bg2:#f8f9fa; --bg3:#e9ecef; --text:#1a1a1a; --text2:#546e7a; --sidebar:#2c3e50; --easy:#2ecc71; --medium:#f39c12; --hard:#e74c3c; --pattern:#3498db; --accent:#9b59b6; }
+body.dark-mode { --bg:#1a1a1a; --bg2:#2d2d2d; --bg3:#3a3a3a; --text:#e0e0e0; --text2:#b0b0b0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); }
+.header { position:fixed; top:0; left:0; right:0; height:60px; background:var(--sidebar); color:white; display:flex; align-items:center; padding:0 20px; z-index:1000; }
+.header h1 { font-size:18px; flex:1; }
+.header-controls { display:flex; gap:15px; align-items:center; }
+.search-box input { padding:8px 12px; border:none; border-radius:6px; background:rgba(255,255,255,0.15); color:white; width:220px; font-size:14px; }
+.search-box input::placeholder { color:rgba(255,255,255,0.5); }
+.theme-toggle { padding:8px 16px; border:none; border-radius:6px; background:rgba(255,255,255,0.1); color:white; cursor:pointer; font-size:16px; }
+.progress-bar { background:rgba(255,255,255,0.15); border-radius:10px; height:8px; width:150px; overflow:hidden; }
+.progress-fill { background:var(--easy); height:100%; border-radius:10px; transition:width 0.3s; }
+.progress-text { color:rgba(255,255,255,0.7); font-size:12px; margin-left:8px; }
+.sidebar { position:fixed; top:60px; left:0; width:280px; height:calc(100vh - 60px); background:var(--sidebar); overflow-y:auto; padding:20px 0; }
+.sidebar-title { color:white; font-size:12px; font-weight:700; padding:0 20px; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px; opacity:0.7; }
+.sidebar-item { padding:12px 20px; color:white; display:flex; justify-content:space-between; cursor:pointer; font-size:14px; transition:background 0.2s; }
+.sidebar-item:hover { background:rgba(255,255,255,0.1); }
+.sidebar-count { background:var(--pattern); color:white; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+.main-content { margin-left:280px; margin-top:60px; padding:40px; max-width:1100px; }
+.pattern-header { background:linear-gradient(135deg,var(--pattern),var(--accent)); color:white; padding:25px 30px; border-radius:12px; margin-bottom:25px; }
+.pattern-title { font-size:28px; font-weight:700; }
+.pattern-subtitle { font-size:14px; opacity:0.9; margin-top:8px; line-height:1.6; }
+.pattern-count { font-size:13px; opacity:0.8; margin-top:5px; }
+.problem-card { background:var(--bg2); border-radius:12px; margin-bottom:16px; border-left:5px solid; overflow:hidden; transition:box-shadow 0.2s; }
+.problem-card:hover { box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+.problem-card.easy { border-left-color:var(--easy); }
+.problem-card.medium { border-left-color:var(--medium); }
+.problem-card.hard { border-left-color:var(--hard); }
+.problem-card.completed { opacity:0.6; }
+.problem-header { display:flex; justify-content:space-between; align-items:center; padding:18px 25px; cursor:pointer; user-select:none; }
+.problem-title { font-size:18px; font-weight:600; }
+.problem-meta { display:flex; gap:10px; margin-top:6px; font-size:13px; }
+.difficulty-badge { padding:3px 10px; border-radius:6px; font-weight:600; font-size:11px; color:white; }
+.difficulty-badge.easy { background:var(--easy); }
+.difficulty-badge.medium { background:var(--medium); }
+.pattern-tag { color:var(--text2); font-style:italic; }
+.expand-icon { font-size:16px; color:var(--text2); transition:transform 0.3s; }
+.expand-icon.open { transform:rotate(90deg); }
+.problem-body { padding:0 25px 25px; }
+.section { margin-bottom:20px; }
+.section-title { font-size:16px; font-weight:600; color:var(--pattern); margin-bottom:10px; }
+.section-text { font-size:15px; line-height:1.7; color:var(--text); }
+.rationale-section { background:rgba(52,152,219,0.06); padding:15px; border-radius:8px; border-left:3px solid var(--pattern); }
+.edge-section { background:rgba(231,76,60,0.04); padding:15px; border-radius:8px; }
+.edge-list { margin-left:20px; }
+.edge-list li { font-size:14px; line-height:1.8; color:var(--text2); }
+.approach-section { padding:20px; border-radius:10px; margin:20px 0; border-left:5px solid; background:var(--bg2); }
+.brute-force { border-left-color:var(--hard); background:rgba(231,76,60,0.03); }
+.optimized { border-left-color:var(--easy); background:rgba(46,204,113,0.03); }
+.approach-title { font-size:20px; font-weight:700; margin-bottom:15px; }
+.brute-force .approach-title { color:var(--hard); }
+.optimized .approach-title { color:var(--easy); }
+pre { background:#1e1e1e; padding:20px; border-radius:8px; overflow-x:auto; margin:15px 0; }
+body.dark-mode pre { background:#111; }
+code { font-family:'SF Mono','Fira Code','Courier New',monospace; font-size:14px; line-height:1.6; color:#d4d4d4; }
+.complexity-info { background:var(--bg3); padding:12px 15px; border-radius:8px; margin-top:12px; }
+.complexity-item { font-size:14px; margin:4px 0; }
+.complexity-value { font-family:'SF Mono',monospace; font-weight:600; color:var(--pattern); }
+.check-btn { position:absolute; top:18px; right:60px; width:22px; height:22px; border:2px solid var(--text2); border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; background:transparent; font-size:14px; transition:all 0.2s; }
+.check-btn.checked { background:var(--easy); border-color:var(--easy); color:white; }
+.hidden { display:none !important; }
+@media (max-width:768px) {
+    .sidebar { display:none; }
+    .main-content { margin-left:0; padding:20px; }
+    .header h1 { font-size:14px; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>&#127822; Apple Sr. MLE — Top 30 LeetCode Study Guide</h1>
+<div class="header-controls">
+<div class="search-box"><input type="text" id="searchInput" placeholder="Search problems..." oninput="filterProblems()"></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+<span class="progress-text" id="progressText">0/30</span>
+<button class="theme-toggle" onclick="toggleTheme()">&#127763;</button>
+</div>
+</div>
+<div class="sidebar">
+<div class="sidebar-title">Study Tiers</div>
+<div class="sidebar-item" onclick="scrollToTier('tier-1')"><span>Tier 1: Capacity Planning &amp; Resource Allocation</span><span class="sidebar-count">8</span></div>
+<div class="sidebar-item" onclick="scrollToTier('tier-2')"><span>Tier 2: System Design &amp; Data Structure Design</span><span class="sidebar-count">5</span></div>
+<div class="sidebar-item" onclick="scrollToTier('tier-3')"><span>Tier 3: Optimization &amp; Array Fundamentals</span><span class="sidebar-count">5</span></div>
+<div class="sidebar-item" onclick="scrollToTier('tier-4')"><span>Tier 4: Graph &amp; Scheduling</span><span class="sidebar-count">3</span></div>
+<div class="sidebar-item" onclick="scrollToTier('tier-5')"><span>Tier 5: Binary Search &amp; Efficient Lookup</span><span class="sidebar-count">2</span></div>
+<div class="sidebar-item" onclick="scrollToTier('tier-6')"><span>Tier 6: Two Pointer &amp; Sliding Window</span><span class="sidebar-count">4</span></div>
+<div class="sidebar-item" onclick="scrollToTier('tier-7')"><span>Tier 7: Essential Pattern Coverage</span><span class="sidebar-count">3</span></div>
+
+</div>
+<div class="main-content">
+<div id="tier-1">
+<div class="pattern-header">
+<div class="pattern-title">Tier 1: Capacity Planning &amp; Resource Allocation</div>
+<div class="pattern-subtitle">Direct analogies to scheduling, resource allocation, and time-series monitoring for iCloud capacity planning.</div>
+<div class="pattern-count">8 problems</div>
+</div>
+
+<div class="problem-card medium" id="problem-253">
+<div class="problem-header" onclick="toggleProblem(253)">
+<div class="problem-info">
+<div class="problem-title">253. Meeting Rooms II</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Intervals, Heap, Sorting</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-253">&#9654;</div>
+</div>
+<div class="problem-body" id="body-253" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array of meeting intervals consisting of start and end times, determine the minimum number of conference rooms required to accommodate all meetings.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">This is THE capacity planning problem. &#x27;Minimum rooms&#x27; maps directly to &#x27;minimum servers/resources needed to serve all concurrent workloads.&#x27; Apple&#x27;s iCloud team literally solves variants of this — how many instances do we need to handle overlapping request bursts?</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Empty intervals array → return 0</li><li>Single meeting → return 1</li><li>All meetings overlap → return len(intervals)</li><li>No meetings overlap → return 1</li><li>Meetings that share exact start/end boundaries: [0,5], [5,10] → don&#x27;t overlap</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">For every time point, count how many meetings are active. This is extremely slow for large time ranges.</div>
+<pre><code>def minMeetingRooms(intervals):
+    if not intervals:
+        return 0
+
+    # Try every point in time, count overlapping meetings
+    # Collect all unique time points
+    times = set()
+    for start, end in intervals:
+        for t in range(start, end):
+            times.add(t)
+
+    max_rooms = 0
+    for t in times:
+        count = 0
+        for start, end in intervals:
+            if start &lt;= t &lt; end:
+                count += 1
+        max_rooms = max(max_rooms, count)
+
+    return max_rooms</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n × T) where T is the time range span</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(T)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Sort meetings by start time. Use a min-heap to track the earliest ending meeting. If the current meeting starts after the earliest ending one, we can reuse that room (pop it). Otherwise, we need a new room (push). The heap size at any point = rooms in use.</div>
+<pre><code>def minMeetingRooms(intervals):
+    if not intervals:
+        return 0
+
+    import heapq
+
+    # Sort by start time
+    intervals.sort(key=lambda x: x[0])
+
+    # Min-heap tracks end times of ongoing meetings
+    heap = []  # stores end times
+
+    for start, end in intervals:
+        # If earliest ending meeting ends before this one starts,
+        # reuse that room
+        if heap and heap[0] &lt;= start:
+            heapq.heappop(heap)
+        heapq.heappush(heap, end)
+
+    # Heap size = number of rooms needed
+    return len(heap)</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n log n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-56">
+<div class="problem-header" onclick="toggleProblem(56)">
+<div class="problem-info">
+<div class="problem-title">56. Merge Intervals</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Intervals, Sorting</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-56">&#9654;</div>
+</div>
+<div class="problem-body" id="body-56" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Merging overlapping time windows is fundamental to capacity planning. When you have overlapping demand periods, you merge them to find the true contiguous high-demand windows. Also directly relevant to consolidating monitoring alerts.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Single interval → return as-is</li><li>No overlapping intervals → return sorted list</li><li>All intervals overlap into one → return single merged interval</li><li>Intervals that touch at endpoints: [1,4],[4,5] → merge to [1,5]</li><li>Intervals already sorted vs. unsorted input</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Repeatedly scan all pairs, merge overlapping ones, until no more merges happen. Very inefficient due to repeated scanning.</div>
+<pre><code>def merge(intervals):
+    if not intervals:
+        return []
+
+    # Repeatedly scan and merge overlapping pairs
+    merged = [list(i) for i in intervals]
+    changed = True
+
+    while changed:
+        changed = False
+        new_merged = []
+        used = [False] * len(merged)
+
+        for i in range(len(merged)):
+            if used[i]:
+                continue
+            curr = list(merged[i])
+            for j in range(i + 1, len(merged)):
+                if used[j]:
+                    continue
+                # Check overlap
+                if curr[0] &lt;= merged[j][1] and merged[j][0] &lt;= curr[1]:
+                    curr[0] = min(curr[0], merged[j][0])
+                    curr[1] = max(curr[1], merged[j][1])
+                    used[j] = True
+                    changed = True
+            new_merged.append(curr)
+        merged = new_merged
+
+    return sorted(merged)</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n³) worst case with repeated passes</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Sort by start time. Then iterate: if the current interval overlaps with the last merged interval (start ≤ previous end), extend the end. Otherwise, start a new merged interval. One pass after sorting.</div>
+<pre><code>def merge(intervals):
+    if not intervals:
+        return []
+
+    # Sort by start time
+    intervals.sort(key=lambda x: x[0])
+
+    merged = [intervals[0]]
+
+    for start, end in intervals[1:]:
+        # If current interval overlaps with last merged
+        if start &lt;= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+
+    return merged</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n log n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) for output</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card easy" id="problem-252">
+<div class="problem-header" onclick="toggleProblem(252)">
+<div class="problem-info">
+<div class="problem-title">252. Meeting Rooms</div>
+<div class="problem-meta">
+<span class="difficulty-badge easy">Easy</span>
+<span class="pattern-tag">Intervals, Sorting</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-252">&#9654;</div>
+</div>
+<div class="problem-body" id="body-252" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array of meeting time intervals where intervals[i] = [start, end], determine if a person could attend all meetings (i.e., no two meetings overlap).</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">The simpler version of Meeting Rooms II. Tests whether you can detect scheduling conflicts — a basic check before doing capacity allocation. In infrastructure terms: can one server handle all these tasks sequentially?</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Empty array → return True (no conflicts)</li><li>Single meeting → return True</li><li>Two meetings sharing an endpoint: [0,5],[5,10] → no conflict (True)</li><li>Two meetings sharing an endpoint: [0,5],[4,10] → conflict (False)</li><li>All identical meetings → conflict</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Compare every pair of meetings to check for overlap. Simple but slow for large inputs.</div>
+<pre><code>def canAttendMeetings(intervals):
+    # Check every pair for overlap
+    for i in range(len(intervals)):
+        for j in range(i + 1, len(intervals)):
+            # Overlap if one starts before the other ends
+            if intervals[i][0] &lt; intervals[j][1] and intervals[j][0] &lt; intervals[i][1]:
+                return False
+    return True</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Sort by start time. Then just check each consecutive pair — if any meeting starts before the previous one ends, there&#x27;s a conflict. After sorting, we only need to check neighbors.</div>
+<pre><code>def canAttendMeetings(intervals):
+    # Sort by start time
+    intervals.sort(key=lambda x: x[0])
+
+    # Check adjacent pairs for overlap
+    for i in range(1, len(intervals)):
+        if intervals[i][0] &lt; intervals[i - 1][1]:
+            return False
+
+    return True</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n log n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1) if in-place sort</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-134">
+<div class="problem-header" onclick="toggleProblem(134)">
+<div class="problem-info">
+<div class="problem-title">134. Gas Station</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Greedy, Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-134">&#9654;</div>
+</div>
+<div class="problem-body" id="body-134" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">There are n gas stations along a circular route. Given arrays gas and cost where gas[i] is the gas gained at station i and cost[i] is the gas needed to reach the next station, find the starting station index to complete the circuit, or return -1.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">This is a resource-sufficiency problem: &#x27;Given a workload cycle and resource availability at each point, where should we start provisioning to ensure we never run out?&#x27; Directly maps to capacity planning where you need to find the optimal starting configuration.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Total gas &lt; total cost → impossible, return -1</li><li>Total gas == total cost → exactly one valid start</li><li>Single station with enough gas → return 0</li><li>All stations identical → return 0</li><li>Start must be at the last station</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Try each station as a starting point. Simulate the full circuit. If tank never goes negative, that&#x27;s a valid start.</div>
+<pre><code>def canCompleteCircuit(gas, cost):
+    n = len(gas)
+
+    for start in range(n):
+        tank = 0
+        can_complete = True
+
+        for i in range(n):
+            station = (start + i) % n
+            tank += gas[station] - cost[station]
+            if tank &lt; 0:
+                can_complete = False
+                break
+
+        if can_complete:
+            return start
+
+    return -1</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Key insight: if total gas ≥ total cost, a solution exists. As we iterate, if the running tank goes negative at station i, no station from our current start through i can be the answer (they&#x27;d all fail at or before i). So we reset start to i+1 and reset tank. The last start standing is the answer.</div>
+<pre><code>def canCompleteCircuit(gas, cost):
+    # If total gas &lt; total cost, impossible
+    if sum(gas) &lt; sum(cost):
+        return -1
+
+    tank = 0
+    start = 0
+
+    for i in range(len(gas)):
+        tank += gas[i] - cost[i]
+        # If tank goes negative, we can&#x27;t start from &#x27;start&#x27;
+        # or any station between start and i
+        if tank &lt; 0:
+            start = i + 1
+            tank = 0
+
+    return start</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-347">
+<div class="problem-header" onclick="toggleProblem(347)">
+<div class="problem-info">
+<div class="problem-title">347. Top K Frequent Elements</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Hash Table, Heap, Sorting</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-347">&#9654;</div>
+</div>
+<div class="problem-body" id="body-347" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an integer array nums and an integer k, return the k most frequent elements. You may return the answer in any order.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">In capacity planning, you constantly need &#x27;top K&#x27; analysis: top K busiest services, top K resource consumers, top K error codes. This pattern underpins every monitoring dashboard at Apple.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>k equals number of unique elements → return all unique elements</li><li>k = 1 → return the single most frequent</li><li>All elements same → return that element</li><li>All elements appear once → return any k of them</li><li>Array with exactly k distinct elements</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Count frequencies with a hash map, then sort all unique elements by frequency. Return the top k. Sorting makes it O(n log n).</div>
+<pre><code>def topKFrequent(nums, k):
+    from collections import Counter
+
+    # Count frequencies, sort by frequency
+    count = Counter(nums)
+    # Sort all items by frequency descending
+    sorted_items = sorted(count.keys(), key=lambda x: count[x], reverse=True)
+
+    return sorted_items[:k]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n log n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Use bucket sort where index = frequency. Since max frequency ≤ n, we create n+1 buckets. Place each element in its frequency bucket, then collect from the highest bucket down until we have k elements. Avoids the O(n log n) sort.</div>
+<pre><code>def topKFrequent(nums, k):
+    from collections import Counter
+
+    count = Counter(nums)
+
+    # Bucket sort: index = frequency, value = list of elements
+    # Max possible frequency is len(nums)
+    buckets = [[] for _ in range(len(nums) + 1)]
+
+    for num, freq in count.items():
+        buckets[freq].append(num)
+
+    # Collect from highest frequency bucket down
+    result = []
+    for freq in range(len(buckets) - 1, 0, -1):
+        for num in buckets[freq]:
+            result.append(num)
+            if len(result) == k:
+                return result
+
+    return result</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-362">
+<div class="problem-header" onclick="toggleProblem(362)">
+<div class="problem-info">
+<div class="problem-title">362. Design Hit Counter</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Queue</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-362">&#9654;</div>
+</div>
+<div class="problem-body" id="body-362" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Design a hit counter which counts the number of hits received in the past 5 minutes (300 seconds). Implement hit(timestamp) and getHits(timestamp).</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">This IS service observability. Apple&#x27;s iCloud team builds exactly this — real-time request-rate counters for monitoring QPS, error rates, and traffic bursts. The rolling time window is a core pattern in their monitoring infrastructure.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Multiple hits at the same timestamp</li><li>getHits called with no prior hits → 0</li><li>Hits exactly 300 seconds apart (boundary check)</li><li>Timestamps arriving in strict order (guaranteed by problem)</li><li>Very sparse hits (large gaps between timestamps)</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Store every hit timestamp. On getHits, scan all timestamps and count those within the 300-second window. Memory grows unbounded.</div>
+<pre><code>class HitCounter:
+    def __init__(self):
+        self.hits = []  # store all timestamps
+
+    def hit(self, timestamp):
+        self.hits.append(timestamp)
+
+    def getHits(self, timestamp):
+        # Count hits in [timestamp - 299, timestamp]
+        count = 0
+        for t in self.hits:
+            if t &gt; timestamp - 300 and t &lt;= timestamp:
+                count += 1
+        return count</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">hit: O(1), getHits: O(n) where n = total hits</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) — stores all hits forever</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Use two fixed arrays of size 300 (the window size). Each slot maps to a second via modulo. On hit, check if the slot&#x27;s timestamp matches; if not, reset the count. On getHits, sum counts for slots whose timestamp is within the 300-second window. Constant space regardless of hit volume.</div>
+<pre><code>class HitCounter:
+    def __init__(self):
+        # Fixed-size arrays of 300 (one per second in window)
+        self.times = [0] * 300
+        self.counts = [0] * 300
+
+    def hit(self, timestamp):
+        idx = timestamp % 300
+        if self.times[idx] != timestamp:
+            # New second, reset count
+            self.times[idx] = timestamp
+            self.counts[idx] = 1
+        else:
+            self.counts[idx] += 1
+
+    def getHits(self, timestamp):
+        total = 0
+        for i in range(300):
+            # Only count if the stored time is within the window
+            if timestamp - self.times[i] &lt; 300:
+                total += self.counts[i]
+        return total</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">hit: O(1), getHits: O(300) = O(1)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(300) = O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-981">
+<div class="problem-header" onclick="toggleProblem(981)">
+<div class="problem-info">
+<div class="problem-title">981. Time Based Key-Value Store</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Binary Search, Hash Table</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-981">&#9654;</div>
+</div>
+<div class="problem-body" id="body-981" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Design a time-based key-value data structure that supports setting values at a specified time and retrieving the value at a certain timestamp. Implement set(key, value, timestamp) and get(key, timestamp) which returns the value with the largest timestamp ≤ given timestamp.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Time-series data retrieval is the backbone of ML forecasting pipelines. This data structure models exactly how capacity metrics are stored and queried — &#x27;what was the CPU utilization at time T?&#x27; Apple&#x27;s monitoring systems use variants of this pattern.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>get() with timestamp before any set → return &#x27;&#x27;</li><li>get() with exact timestamp match</li><li>get() between two timestamps → return earlier one</li><li>Multiple values for same key at different timestamps</li><li>Single key with single timestamp</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Store all (timestamp, value) pairs per key. On get, linearly scan to find the latest timestamp ≤ target. Slow for keys with many entries.</div>
+<pre><code>class TimeMap:
+    def __init__(self):
+        self.store = {}  # key -&gt; [(timestamp, value), ...]
+
+    def set(self, key, value, timestamp):
+        if key not in self.store:
+            self.store[key] = []
+        self.store[key].append((timestamp, value))
+
+    def get(self, key, timestamp):
+        if key not in self.store:
+            return &quot;&quot;
+
+        # Linear scan for largest timestamp &lt;= given
+        result = &quot;&quot;
+        for ts, val in self.store[key]:
+            if ts &lt;= timestamp:
+                result = val
+        return result</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">set: O(1), get: O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Since timestamps are given in increasing order per the problem constraints, the list per key is already sorted. Use binary search to find the largest timestamp ≤ target. This is the standard approach for time-series lookups.</div>
+<pre><code>class TimeMap:
+    def __init__(self):
+        self.store = {}  # key -&gt; [(timestamp, value), ...]
+
+    def set(self, key, value, timestamp):
+        if key not in self.store:
+            self.store[key] = []
+        self.store[key].append((timestamp, value))
+
+    def get(self, key, timestamp):
+        if key not in self.store:
+            return &quot;&quot;
+
+        values = self.store[key]
+        # Binary search for largest timestamp &lt;= given
+        lo, hi = 0, len(values) - 1
+        result = &quot;&quot;
+
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if values[mid][0] &lt;= timestamp:
+                result = values[mid][1]
+                lo = mid + 1
+            else:
+                hi = mid - 1
+
+        return result</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">set: O(1), get: O(log n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-1146">
+<div class="problem-header" onclick="toggleProblem(1146)">
+<div class="problem-info">
+<div class="problem-title">1146. Snapshot Array</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Binary Search</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-1146">&#9654;</div>
+</div>
+<div class="problem-body" id="body-1146" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Implement a SnapshotArray supporting set(index, val), snap() which takes a snapshot and returns snap_id, and get(index, snap_id) which returns the value at index at the given snapshot.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Point-in-time snapshots are essential for capacity planning. &#x27;What was our resource allocation at snapshot T?&#x27; This models versioned configuration and metric stores that Apple uses for tracking infrastructure state over time.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>get() on an index that was never set → return 0</li><li>Multiple snaps with no changes in between</li><li>set() the same index multiple times before a snap</li><li>get() with snap_id 0 (first snapshot)</li><li>Large array length but sparse updates</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Copy the entire array on each snap(). get() is O(1) but memory is massive — each snapshot stores the full array even if only one element changed.</div>
+<pre><code>class SnapshotArray:
+    def __init__(self, length):
+        self.arr = [0] * length
+        self.snaps = []  # list of full array copies
+
+    def set(self, index, val):
+        self.arr[index] = val
+
+    def snap(self):
+        self.snaps.append(self.arr[:])  # full copy
+        return len(self.snaps) - 1
+
+    def get(self, index, snap_id):
+        return self.snaps[snap_id][index]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">set: O(1), snap: O(n), get: O(1)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n × S) where S = number of snapshots</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Instead of copying the whole array, store only the changes per index as (snap_id, value) pairs. snap() just increments the ID. get() binary-searches the history for the latest entry at or before the target snap_id. Only stores what actually changed.</div>
+<pre><code>class SnapshotArray:
+    def __init__(self, length):
+        # Each index stores a list of (snap_id, value) pairs
+        self.changes = [[[0, 0]] for _ in range(length)]
+        self.snap_id = 0
+
+    def set(self, index, val):
+        self.changes[index].append([self.snap_id, val])
+
+    def snap(self):
+        self.snap_id += 1
+        return self.snap_id - 1
+
+    def get(self, index, snap_id):
+        # Binary search for the latest entry with snap_id &lt;= target
+        history = self.changes[index]
+        lo, hi = 0, len(history) - 1
+
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if history[mid][0] &lt;= snap_id:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+
+        return history[hi][1]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">set: O(1), snap: O(1), get: O(log S)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(number of set calls)</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="tier-2">
+<div class="pattern-header">
+<div class="pattern-title">Tier 2: System Design &amp; Data Structure Design</div>
+<div class="pattern-subtitle">Apple heavily tests design problems at the senior level. These test your ability to build efficient, well-engineered data structures — the same skill needed to build cloud infrastructure components.</div>
+<div class="pattern-count">5 problems</div>
+</div>
+
+<div class="problem-card medium" id="problem-146">
+<div class="problem-header" onclick="toggleProblem(146)">
+<div class="problem-info">
+<div class="problem-title">146. LRU Cache</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Hash Table, Linked List</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-146">&#9654;</div>
+</div>
+<div class="problem-body" id="body-146" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Design a data structure that follows LRU eviction with O(1) get(key) and put(key, value). If capacity is exceeded, evict the least recently used key.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">LRU caching is fundamental to cloud infrastructure. Apple&#x27;s CDN, object storage, and service layers all use LRU or LRU-variant caches. This problem tests whether you can combine hash maps and linked lists for O(1) operations — a key systems engineering skill.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>put() on an existing key (update value and move to most recent)</li><li>get() on a non-existent key → return -1</li><li>Capacity of 1 (every put evicts the previous)</li><li>put() then immediate get() on same key</li><li>Eviction order when multiple keys are equally old</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Use a list to track usage order. On access, remove from current position and append to end. On eviction, pop from front. The list operations are O(n).</div>
+<pre><code>class LRUCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = {}        # key -&gt; value
+        self.order = []        # list of keys in usage order
+
+    def get(self, key):
+        if key not in self.cache:
+            return -1
+        # Move to end (most recently used)
+        self.order.remove(key)  # O(n)
+        self.order.append(key)
+        return self.cache[key]
+
+    def put(self, key, value):
+        if key in self.cache:
+            self.order.remove(key)  # O(n)
+        elif len(self.cache) &gt;= self.capacity:
+            # Evict least recently used
+            lru = self.order.pop(0)  # O(n)
+            del self.cache[lru]
+
+        self.cache[key] = value
+        self.order.append(key)</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n) for both get and put due to list.remove()</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(capacity)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Combine a hash map (key→node) with a doubly-linked list. The list maintains usage order: most recent at tail, least recent at head. Remove and insert are O(1) with direct node references. Dummy head/tail nodes simplify edge cases.</div>
+<pre><code>class Node:
+    def __init__(self, key=0, val=0):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
+
+class LRUCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = {}  # key -&gt; Node
+        # Dummy head and tail for easy manipulation
+        self.head = Node()
+        self.tail = Node()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _remove(self, node):
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _add_to_end(self, node):
+        node.prev = self.tail.prev
+        node.next = self.tail
+        self.tail.prev.next = node
+        self.tail.prev = node
+
+    def get(self, key):
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._remove(node)
+        self._add_to_end(node)
+        return node.val
+
+    def put(self, key, value):
+        if key in self.cache:
+            self._remove(self.cache[key])
+            del self.cache[key]
+
+        node = Node(key, value)
+        self._add_to_end(node)
+        self.cache[key] = node
+
+        if len(self.cache) &gt; self.capacity:
+            # Evict LRU (node right after dummy head)
+            lru = self.head.next
+            self._remove(lru)
+            del self.cache[lru.key]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(1) for both get and put</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(capacity)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-706">
+<div class="problem-header" onclick="toggleProblem(706)">
+<div class="problem-info">
+<div class="problem-title">706. Design HashMap</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Hash Table</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-706">&#9654;</div>
+</div>
+<div class="problem-body" id="body-706" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Design a HashMap without using any built-in hash table libraries. Implement put(key, value), get(key), and remove(key).</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Understanding hash map internals is core systems knowledge. At Apple, you&#x27;ll work with custom data structures for performance-critical paths. This tests whether you understand hashing, collision resolution, and load factor tradeoffs.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>put() then get() on same key</li><li>put() with existing key (update)</li><li>remove() on non-existent key (no-op)</li><li>get() on non-existent key → -1</li><li>Hash collisions (multiple keys mapping to same bucket)</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Direct addressing with a massive array. Works within the problem constraints but wastes enormous memory. Not a real hash map.</div>
+<pre><code>class MyHashMap:
+    def __init__(self):
+        # Simple: use a large array (wasteful but works)
+        self.data = [-1] * 1000001
+
+    def put(self, key, value):
+        self.data[key] = value
+
+    def get(self, key):
+        return self.data[key]
+
+    def remove(self, key):
+        self.data[key] = -1</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(1) for all operations</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(max_key) — 10^6 array regardless of usage</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Use an array of buckets with chaining (each bucket is a list of (key, value) pairs). Hash function = key % size. On collision, search the chain linearly. With a good bucket count, chains stay short and operations are effectively O(1).</div>
+<pre><code>class MyHashMap:
+    def __init__(self):
+        self.size = 1000
+        self.buckets = [[] for _ in range(self.size)]
+
+    def _hash(self, key):
+        return key % self.size
+
+    def put(self, key, value):
+        idx = self._hash(key)
+        for i, (k, v) in enumerate(self.buckets[idx]):
+            if k == key:
+                self.buckets[idx][i] = (key, value)
+                return
+        self.buckets[idx].append((key, value))
+
+    def get(self, key):
+        idx = self._hash(key)
+        for k, v in self.buckets[idx]:
+            if k == key:
+                return v
+        return -1
+
+    def remove(self, key):
+        idx = self._hash(key)
+        for i, (k, v) in enumerate(self.buckets[idx]):
+            if k == key:
+                self.buckets[idx].pop(i)
+                return</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">Average O(1), worst O(n/k) per operation where k = bucket count</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(k + n) where n = stored elements</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-155">
+<div class="problem-header" onclick="toggleProblem(155)">
+<div class="problem-info">
+<div class="problem-title">155. Min Stack</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Stack</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-155">&#9654;</div>
+</div>
+<div class="problem-body" id="body-155" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Design a stack supporting push, pop, top, and getMin — all in O(1) time.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Maintaining auxiliary metadata (like min/max) alongside a data structure is a pattern used everywhere in monitoring systems. Think: tracking the minimum latency seen so far as you process a stream of requests.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Push minimum, then pop it → new min must be correct</li><li>All elements are the same</li><li>Push in decreasing order (min changes every push)</li><li>Push in increasing order (min never changes)</li><li>Single element: push then getMin then pop</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Use a regular stack. getMin scans the entire stack each time. Simple but doesn&#x27;t meet the O(1) requirement for getMin.</div>
+<pre><code>class MinStack:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, val):
+        self.stack.append(val)
+
+    def pop(self):
+        self.stack.pop()
+
+    def top(self):
+        return self.stack[-1]
+
+    def getMin(self):
+        return min(self.stack)  # O(n) scan</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">push/pop/top: O(1), getMin: O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Maintain a parallel min_stack that only stores values when they become a new minimum. The top of min_stack is always the current minimum. When we pop a value equal to the current min, we pop from both stacks. Use &lt;= (not &lt;) to handle duplicate minimums.</div>
+<pre><code>class MinStack:
+    def __init__(self):
+        self.stack = []      # stores values
+        self.min_stack = []  # stores running minimums
+
+    def push(self, val):
+        self.stack.append(val)
+        # Push to min_stack if it&#x27;s empty or val &lt;= current min
+        if not self.min_stack or val &lt;= self.min_stack[-1]:
+            self.min_stack.append(val)
+
+    def pop(self):
+        val = self.stack.pop()
+        # If popped value is the current min, pop from min_stack too
+        if val == self.min_stack[-1]:
+            self.min_stack.pop()
+
+    def top(self):
+        return self.stack[-1]
+
+    def getMin(self):
+        return self.min_stack[-1]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(1) for all operations</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-622">
+<div class="problem-header" onclick="toggleProblem(622)">
+<div class="problem-info">
+<div class="problem-title">622. Design Circular Queue</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Queue</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-622">&#9654;</div>
+</div>
+<div class="problem-body" id="body-622" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Design a circular queue (ring buffer) supporting enQueue, deQueue, Front, Rear, isEmpty, and isFull operations.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Ring buffers are used everywhere in infrastructure: log buffers, network packet queues, metric collection pipelines. Apple&#x27;s iCloud systems use circular buffers for efficient, bounded-memory data streaming.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Enqueue when full → return False</li><li>Dequeue when empty → return False</li><li>Front/Rear when empty → return -1</li><li>Fill completely, empty completely, fill again (wrap-around)</li><li>Queue of size 1</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Use a Python list as the underlying storage. deQueue uses pop(0) which shifts all elements — O(n). Not a true circular buffer.</div>
+<pre><code>class MyCircularQueue:
+    def __init__(self, k):
+        self.queue = []
+        self.capacity = k
+
+    def enQueue(self, value):
+        if len(self.queue) &gt;= self.capacity:
+            return False
+        self.queue.append(value)
+        return True
+
+    def deQueue(self):
+        if not self.queue:
+            return False
+        self.queue.pop(0)  # O(n) shift
+        return True
+
+    def Front(self):
+        return self.queue[0] if self.queue else -1
+
+    def Rear(self):
+        return self.queue[-1] if self.queue else -1
+
+    def isEmpty(self):
+        return len(self.queue) == 0
+
+    def isFull(self):
+        return len(self.queue) == self.capacity</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">deQueue: O(n) due to list.pop(0), others: O(1)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(k)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Use a fixed-size array with head pointer and count. Tail is computed as (head + count) % capacity. On deQueue, advance head. No element shifting needed. The modulo arithmetic handles the wrap-around.</div>
+<pre><code>class MyCircularQueue:
+    def __init__(self, k):
+        self.queue = [0] * k
+        self.capacity = k
+        self.head = 0
+        self.count = 0  # current number of elements
+
+    def enQueue(self, value):
+        if self.isFull():
+            return False
+        # Tail position
+        tail = (self.head + self.count) % self.capacity
+        self.queue[tail] = value
+        self.count += 1
+        return True
+
+    def deQueue(self):
+        if self.isEmpty():
+            return False
+        self.head = (self.head + 1) % self.capacity
+        self.count -= 1
+        return True
+
+    def Front(self):
+        if self.isEmpty():
+            return -1
+        return self.queue[self.head]
+
+    def Rear(self):
+        if self.isEmpty():
+            return -1
+        tail = (self.head + self.count - 1) % self.capacity
+        return self.queue[tail]
+
+    def isEmpty(self):
+        return self.count == 0
+
+    def isFull(self):
+        return self.count == self.capacity</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(1) for all operations</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(k)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-380">
+<div class="problem-header" onclick="toggleProblem(380)">
+<div class="problem-info">
+<div class="problem-title">380. Insert Delete GetRandom O(1)</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Design, Hash Table, Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-380">&#9654;</div>
+</div>
+<div class="problem-body" id="body-380" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Implement a data structure supporting insert(val), remove(val), and getRandom() — all in average O(1) time. getRandom should return each element with equal probability.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Efficient insert/delete/sample is needed for load balancing (random server selection) and A/B testing infrastructure. In capacity planning, you often need to randomly sample from a set of active resources for health checks.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Insert duplicate → return False</li><li>Remove non-existent → return False</li><li>getRandom with single element</li><li>Insert, remove same element, insert again</li><li>Multiple getRandom calls should be uniform</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Use a set for O(1) insert/remove, but getRandom requires converting to a list first, which is O(n).</div>
+<pre><code>import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.data = set()
+
+    def insert(self, val):
+        if val in self.data:
+            return False
+        self.data.add(val)
+        return True
+
+    def remove(self, val):
+        if val not in self.data:
+            return False
+        self.data.remove(val)
+        return True
+
+    def getRandom(self):
+        # Convert to list for random access — O(n)
+        return random.choice(list(self.data))</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">insert/remove: O(1), getRandom: O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Combine a list (for O(1) random access via random.choice) with a hash map (value→index for O(1) lookup). The key trick for O(1) remove: swap the target element with the last element, update the map, then pop from the end. No shifting needed.</div>
+<pre><code>import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.val_to_idx = {}  # value -&gt; index in list
+        self.values = []       # list of values
+
+    def insert(self, val):
+        if val in self.val_to_idx:
+            return False
+        self.val_to_idx[val] = len(self.values)
+        self.values.append(val)
+        return True
+
+    def remove(self, val):
+        if val not in self.val_to_idx:
+            return False
+        # Swap with last element, then pop
+        idx = self.val_to_idx[val]
+        last = self.values[-1]
+        self.values[idx] = last
+        self.val_to_idx[last] = idx
+        self.values.pop()
+        del self.val_to_idx[val]
+        return True
+
+    def getRandom(self):
+        return random.choice(self.values)</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(1) average for all operations</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="tier-3">
+<div class="pattern-header">
+<div class="pattern-title">Tier 3: Optimization &amp; Array Fundamentals</div>
+<div class="pattern-subtitle">Core array manipulation and optimization patterns. These are the building blocks tested in Apple phone screens and represent patterns used in data processing pipelines.</div>
+<div class="pattern-count">5 problems</div>
+</div>
+
+<div class="problem-card easy" id="problem-1">
+<div class="problem-header" onclick="toggleProblem(1)">
+<div class="problem-info">
+<div class="problem-title">1. Two Sum</div>
+<div class="problem-meta">
+<span class="difficulty-badge easy">Easy</span>
+<span class="pattern-tag">Array, Hash Table</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-1">&#9654;</div>
+</div>
+<div class="problem-body" id="body-1" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array of integers nums and an integer target, return indices of the two numbers that add up to target. Each input has exactly one solution.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">The quintessential warmup problem and the most likely opener in an Apple phone screen. Tests hash map usage for complement lookup — the same pattern you&#x27;d use to find matching resource pairs in capacity allocation.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Exactly two elements</li><li>Negative numbers</li><li>Target is zero with positive and negative numbers</li><li>Duplicate values: [3,3] target=6 → [0,1]</li><li>Large array with solution at the very end</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Check every pair. Simple and correct but slow for large arrays.</div>
+<pre><code>def twoSum(nums, target):
+    for i in range(len(nums)):
+        for j in range(i + 1, len(nums)):
+            if nums[i] + nums[j] == target:
+                return [i, j]
+    return []</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">One pass with a hash map. For each number, compute the complement (target - num). If the complement is already in the map, we found our pair. Otherwise, store the current number and index. Each lookup is O(1).</div>
+<pre><code>def twoSum(nums, target):
+    seen = {}  # value -&gt; index
+
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in seen:
+            return [seen[complement], i]
+        seen[num] = i
+
+    return []</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-53">
+<div class="problem-header" onclick="toggleProblem(53)">
+<div class="problem-info">
+<div class="problem-title">53. Maximum Subarray</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Array, Dynamic Programming</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-53">&#9654;</div>
+</div>
+<div class="problem-body" id="body-53" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an integer array nums, find the contiguous subarray with the largest sum and return its sum.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Kadane&#x27;s algorithm finds the optimal contiguous window — directly analogous to finding the peak utilization period in a time series. In capacity planning, you need to identify the maximum sustained load window to size your infrastructure.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>All negative numbers → return the least negative</li><li>Single element → return that element</li><li>All positive numbers → return sum of entire array</li><li>Mix of positive and negative with optimal subarray in the middle</li><li>Array of length 1</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Try every possible subarray by fixing start and extending end. Track the maximum sum seen. Correct but slow.</div>
+<pre><code>def maxSubArray(nums):
+    max_sum = float(&#x27;-inf&#x27;)
+
+    for i in range(len(nums)):
+        current_sum = 0
+        for j in range(i, len(nums)):
+            current_sum += nums[j]
+            max_sum = max(max_sum, current_sum)
+
+    return max_sum</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Kadane&#x27;s algorithm: at each position, decide whether to extend the current subarray or start a new one. If current_sum + nums[i] &lt; nums[i], the prefix is hurting us — start fresh. Track the global maximum throughout.</div>
+<pre><code>def maxSubArray(nums):
+    max_sum = nums[0]
+    current_sum = nums[0]
+
+    for i in range(1, len(nums)):
+        # Either extend the current subarray or start fresh
+        current_sum = max(nums[i], current_sum + nums[i])
+        max_sum = max(max_sum, current_sum)
+
+    return max_sum</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-238">
+<div class="problem-header" onclick="toggleProblem(238)">
+<div class="problem-info">
+<div class="problem-title">238. Product of Array Except Self</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-238">&#9654;</div>
+</div>
+<div class="problem-body" id="body-238" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an integer array nums, return an array where answer[i] equals the product of all elements except nums[i]. Solve in O(n) without using division.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">The prefix/suffix decomposition pattern is widely used in time-series feature engineering. In ML pipelines for capacity planning, you often compute features like &#x27;total load excluding this service&#x27; — same pattern.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Array contains a zero → only that position has non-zero product</li><li>Array contains two zeros → all products are zero</li><li>Array of all ones</li><li>Array with negative numbers</li><li>Array of length 2</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">For each index, multiply all other elements. Two nested loops.</div>
+<pre><code>def productExceptSelf(nums):
+    n = len(nums)
+    result = []
+
+    for i in range(n):
+        product = 1
+        for j in range(n):
+            if i != j:
+                product *= nums[j]
+        result.append(product)
+
+    return result</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) for output</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Two passes: first left-to-right building prefix products, then right-to-left multiplying by suffix products. Each element gets the product of everything to its left times everything to its right. No division needed.</div>
+<pre><code>def productExceptSelf(nums):
+    n = len(nums)
+    result = [1] * n
+
+    # Left pass: result[i] = product of all elements to the left
+    left_product = 1
+    for i in range(n):
+        result[i] = left_product
+        left_product *= nums[i]
+
+    # Right pass: multiply by product of all elements to the right
+    right_product = 1
+    for i in range(n - 1, -1, -1):
+        result[i] *= right_product
+        right_product *= nums[i]
+
+    return result</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1) extra (output array doesn&#x27;t count)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card easy" id="problem-121">
+<div class="problem-header" onclick="toggleProblem(121)">
+<div class="problem-info">
+<div class="problem-title">121. Best Time to Buy and Sell Stock</div>
+<div class="problem-meta">
+<span class="difficulty-badge easy">Easy</span>
+<span class="pattern-tag">Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-121">&#9654;</div>
+</div>
+<div class="problem-body" id="body-121" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array prices where prices[i] is the stock price on day i, find the maximum profit from one buy-sell transaction (buy before sell).</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Finding the optimal buy/sell point in a time series is directly analogous to identifying the best provisioning window: &#x27;when should we have scaled up (buy) and when should we have scaled down (sell) to maximize resource efficiency?&#x27;</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Prices strictly decreasing → return 0 (no profit possible)</li><li>Prices strictly increasing → buy first day, sell last</li><li>All same price → return 0</li><li>Array of length 1 → return 0</li><li>Maximum profit spans the entire array</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Check every possible buy-sell pair. Track the maximum profit.</div>
+<pre><code>def maxProfit(prices):
+    max_profit = 0
+
+    for i in range(len(prices)):
+        for j in range(i + 1, len(prices)):
+            profit = prices[j] - prices[i]
+            max_profit = max(max_profit, profit)
+
+    return max_profit</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Track the minimum price seen so far. At each day, the best profit is today&#x27;s price minus the minimum seen before. One pass, constant space.</div>
+<pre><code>def maxProfit(prices):
+    min_price = float(&#x27;inf&#x27;)
+    max_profit = 0
+
+    for price in prices:
+        min_price = min(min_price, price)
+        max_profit = max(max_profit, price - min_price)
+
+    return max_profit</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-128">
+<div class="problem-header" onclick="toggleProblem(128)">
+<div class="problem-info">
+<div class="problem-title">128. Longest Consecutive Sequence</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Array, Hash Table</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-128">&#9654;</div>
+</div>
+<div class="problem-body" id="body-128" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an unsorted array of integers, return the length of the longest consecutive elements sequence. Must run in O(n) time.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Finding consecutive ranges in data is relevant to identifying contiguous time periods of high load, consecutive alert windows, or sequential resource IDs that need attention.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Empty array → return 0</li><li>All duplicates: [1,1,1] → return 1</li><li>Single element → return 1</li><li>Already sorted consecutive → return length</li><li>Multiple sequences of same length</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Sort the array, then scan for consecutive runs. Simple but violates the O(n) requirement.</div>
+<pre><code>def longestConsecutive(nums):
+    if not nums:
+        return 0
+
+    nums.sort()
+    max_len = 1
+    curr_len = 1
+
+    for i in range(1, len(nums)):
+        if nums[i] == nums[i-1]:
+            continue  # skip duplicates
+        if nums[i] == nums[i-1] + 1:
+            curr_len += 1
+        else:
+            curr_len = 1
+        max_len = max(max_len, curr_len)
+
+    return max_len</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n log n) due to sorting</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1) if in-place sort</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Put all numbers in a set. For each number, only start counting if it&#x27;s the start of a sequence (num-1 not in set). Then count forward. Each number is visited at most twice (once in the outer loop, once in a while loop), so total work is O(n).</div>
+<pre><code>def longestConsecutive(nums):
+    num_set = set(nums)
+    max_len = 0
+
+    for num in num_set:
+        # Only start counting from the beginning of a sequence
+        if num - 1 not in num_set:
+            current = num
+            length = 1
+
+            while current + 1 in num_set:
+                current += 1
+                length += 1
+
+            max_len = max(max_len, length)
+
+    return max_len</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="tier-4">
+<div class="pattern-header">
+<div class="pattern-title">Tier 4: Graph &amp; Scheduling</div>
+<div class="pattern-subtitle">Dependency management and workload ordering — core to scheduling jobs, resolving service dependencies, and understanding infrastructure topology.</div>
+<div class="pattern-count">3 problems</div>
+</div>
+
+<div class="problem-card medium" id="problem-207">
+<div class="problem-header" onclick="toggleProblem(207)">
+<div class="problem-info">
+<div class="problem-title">207. Course Schedule</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Graph, Topological Sort, DFS</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-207">&#9654;</div>
+</div>
+<div class="problem-body" id="body-207" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">There are numCourses courses with prerequisites. Given prerequisites[i] = [a, b] meaning you must take b before a, return true if you can finish all courses (i.e., no cycles).</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">This is cycle detection in a dependency graph. At Apple, workloads have dependencies — &#x27;service A needs data from service B.&#x27; If there&#x27;s a circular dependency, the system deadlocks. This problem directly tests that understanding.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>No prerequisites → return True</li><li>Self-loop: [1,1] → return False</li><li>Two courses with mutual dependency → cycle → False</li><li>Linear chain of dependencies → True</li><li>Disconnected components (some courses independent)</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">DFS with three-color marking. This IS already optimal — the &#x27;brute force&#x27; approach for cycle detection is DFS, which is efficient. The distinction here is DFS vs BFS (Kahn&#x27;s) approach.</div>
+<pre><code>def canFinish(numCourses, prerequisites):
+    from collections import defaultdict
+
+    graph = defaultdict(list)
+    for a, b in prerequisites:
+        graph[b].append(a)
+
+    # Try to find a valid ordering using DFS
+    # States: 0=unvisited, 1=in-progress, 2=completed
+    state = [0] * numCourses
+
+    def has_cycle(node):
+        if state[node] == 1:  # back edge = cycle
+            return True
+        if state[node] == 2:  # already processed
+            return False
+
+        state[node] = 1
+        for neighbor in graph[node]:
+            if has_cycle(neighbor):
+                return True
+        state[node] = 2
+        return False
+
+    for i in range(numCourses):
+        if has_cycle(i):
+            return False
+    return True</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(V + E)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(V + E)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Kahn&#x27;s algorithm (BFS topological sort). Compute in-degrees. Start with all zero-in-degree nodes. Process each, decrement neighbors&#x27; in-degrees. If a neighbor reaches 0, add to queue. If we process all nodes, no cycle exists. More intuitive for scheduling contexts.</div>
+<pre><code>def canFinish(numCourses, prerequisites):
+    from collections import defaultdict, deque
+
+    graph = defaultdict(list)
+    in_degree = [0] * numCourses
+
+    for a, b in prerequisites:
+        graph[b].append(a)
+        in_degree[a] += 1
+
+    # Kahn&#x27;s algorithm: BFS starting from nodes with 0 in-degree
+    queue = deque()
+    for i in range(numCourses):
+        if in_degree[i] == 0:
+            queue.append(i)
+
+    completed = 0
+    while queue:
+        node = queue.popleft()
+        completed += 1
+
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    return completed == numCourses</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(V + E)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(V + E)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-210">
+<div class="problem-header" onclick="toggleProblem(210)">
+<div class="problem-info">
+<div class="problem-title">210. Course Schedule II</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Graph, Topological Sort</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-210">&#9654;</div>
+</div>
+<div class="problem-body" id="body-210" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given numCourses and prerequisites, return a valid ordering of courses. If impossible (cycle exists), return an empty array.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">This extends Course Schedule I to actually produce the ordering. In capacity planning, you need to determine the order to provision resources: &#x27;set up the database before the app server, set up networking before the database.&#x27; This IS topological sort of a deployment pipeline.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>No prerequisites → return any ordering [0,1,...,n-1]</li><li>Cycle exists → return []</li><li>Linear chain → only one valid ordering</li><li>Multiple valid orderings (any is acceptable)</li><li>Single course → return [0]</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">DFS-based topological sort. Append nodes in post-order (after all descendants are processed), then reverse. Detects cycles via back-edge detection (node in &#x27;in-progress&#x27; state).</div>
+<pre><code>def findOrder(numCourses, prerequisites):
+    from collections import defaultdict
+
+    graph = defaultdict(list)
+    for a, b in prerequisites:
+        graph[b].append(a)
+
+    state = [0] * numCourses  # 0=unvisited, 1=in-progress, 2=done
+    order = []
+
+    def dfs(node):
+        if state[node] == 1:
+            return False  # cycle
+        if state[node] == 2:
+            return True
+
+        state[node] = 1
+        for neighbor in graph[node]:
+            if not dfs(neighbor):
+                return False
+
+        state[node] = 2
+        order.append(node)  # post-order
+        return True
+
+    for i in range(numCourses):
+        if not dfs(i):
+            return []
+
+    return order[::-1]  # reverse post-order = topological order</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(V + E)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(V + E)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Kahn&#x27;s algorithm again, but this time we collect the processing order. Nodes are added to the result as they&#x27;re dequeued (all their prerequisites are satisfied). If result length &lt; numCourses, a cycle exists.</div>
+<pre><code>def findOrder(numCourses, prerequisites):
+    from collections import defaultdict, deque
+
+    graph = defaultdict(list)
+    in_degree = [0] * numCourses
+
+    for a, b in prerequisites:
+        graph[b].append(a)
+        in_degree[a] += 1
+
+    queue = deque()
+    for i in range(numCourses):
+        if in_degree[i] == 0:
+            queue.append(i)
+
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    return order if len(order) == numCourses else []</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(V + E)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(V + E)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-200">
+<div class="problem-header" onclick="toggleProblem(200)">
+<div class="problem-info">
+<div class="problem-title">200. Number of Islands</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Graph, DFS, Matrix</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-200">&#9654;</div>
+</div>
+<div class="problem-body" id="body-200" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given a 2D binary grid of &#x27;1&#x27;s (land) and &#x27;0&#x27;s (water), return the number of islands. An island is formed by connecting adjacent &#x27;1&#x27;s horizontally or vertically.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Connected component counting maps to identifying clusters of related resources — server groups, failure domains, or network partitions. In iCloud&#x27;s distributed infrastructure, understanding which components form isolated clusters is critical for resilience planning.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>All water → return 0</li><li>All land → return 1</li><li>Single cell grid</li><li>Only diagonal connections (not counted as connected)</li><li>Large grid with many small islands</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">DFS with a separate visited matrix. Uses extra space for the visited tracker.</div>
+<pre><code>def numIslands(grid):
+    if not grid:
+        return 0
+
+    rows, cols = len(grid), len(grid[0])
+    visited = [[False] * cols for _ in range(rows)]
+    count = 0
+
+    def dfs(r, c):
+        if (r &lt; 0 or r &gt;= rows or c &lt; 0 or c &gt;= cols
+                or grid[r][c] == &#x27;0&#x27; or visited[r][c]):
+            return
+        visited[r][c] = True
+        dfs(r+1, c)
+        dfs(r-1, c)
+        dfs(r, c+1)
+        dfs(r, c-1)
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == &#x27;1&#x27; and not visited[r][c]:
+                dfs(r, c)
+                count += 1
+
+    return count</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(m × n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(m × n) for visited array + recursion stack</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Same DFS but modify the grid in-place: change visited &#x27;1&#x27;s to &#x27;0&#x27;s (sink the island). Eliminates the visited matrix. Each cell is visited at most once. For iterative BFS version, use a queue instead of recursion to avoid stack overflow on large grids.</div>
+<pre><code>def numIslands(grid):
+    if not grid:
+        return 0
+
+    rows, cols = len(grid), len(grid[0])
+    count = 0
+
+    def dfs(r, c):
+        if r &lt; 0 or r &gt;= rows or c &lt; 0 or c &gt;= cols or grid[r][c] == &#x27;0&#x27;:
+            return
+        grid[r][c] = &#x27;0&#x27;  # sink the island (mark visited in-place)
+        dfs(r+1, c)
+        dfs(r-1, c)
+        dfs(r, c+1)
+        dfs(r, c-1)
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == &#x27;1&#x27;:
+                dfs(r, c)
+                count += 1
+
+    return count</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(m × n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(m × n) worst case for recursion stack, but no extra visited array</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="tier-5">
+<div class="pattern-header">
+<div class="pattern-title">Tier 5: Binary Search &amp; Efficient Lookup</div>
+<div class="pattern-subtitle">Finding thresholds, boundaries, and optimal points in sorted data — essential for capacity threshold detection and SLA boundary analysis.</div>
+<div class="pattern-count">2 problems</div>
+</div>
+
+<div class="problem-card medium" id="problem-34">
+<div class="problem-header" onclick="toggleProblem(34)">
+<div class="problem-info">
+<div class="problem-title">34. Find First and Last Position of Element in Sorted Array</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Binary Search, Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-34">&#9654;</div>
+</div>
+<div class="problem-body" id="body-34" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given a sorted array of integers, find the starting and ending position of a given target value in O(log n). If not found, return [-1, -1].</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Binary search for boundaries is how you find &#x27;when did utilization first exceed X%&#x27; and &#x27;when did it last exceed X%&#x27; in sorted time-series data. This is the go-to pattern for threshold detection in monitoring systems.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Target not in array → [-1, -1]</li><li>Target appears exactly once → [i, i]</li><li>All elements are the target → [0, n-1]</li><li>Target at the very start or very end</li><li>Empty array → [-1, -1]</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Linear scan to find first and last occurrence. Correct but doesn&#x27;t leverage the sorted property.</div>
+<pre><code>def searchRange(nums, target):
+    first = -1
+    last = -1
+
+    for i in range(len(nums)):
+        if nums[i] == target:
+            if first == -1:
+                first = i
+            last = i
+
+    return [first, last]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Two binary searches: one biased left (when found, continue searching left half) and one biased right (when found, continue searching right half). Each finds one boundary in O(log n).</div>
+<pre><code>def searchRange(nums, target):
+    def find_left(nums, target):
+        lo, hi = 0, len(nums) - 1
+        result = -1
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                result = mid
+                hi = mid - 1  # keep searching left
+            elif nums[mid] &lt; target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return result
+
+    def find_right(nums, target):
+        lo, hi = 0, len(nums) - 1
+        result = -1
+        while lo &lt;= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                result = mid
+                lo = mid + 1  # keep searching right
+            elif nums[mid] &lt; target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return result
+
+    return [find_left(nums, target), find_right(nums, target)]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(log n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card easy" id="problem-108">
+<div class="problem-header" onclick="toggleProblem(108)">
+<div class="problem-info">
+<div class="problem-title">108. Convert Sorted Array to Binary Search Tree</div>
+<div class="problem-meta">
+<span class="difficulty-badge easy">Easy</span>
+<span class="pattern-tag">Binary Tree, Binary Search</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-108">&#9654;</div>
+</div>
+<div class="problem-body" id="body-108" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given a sorted array, convert it to a height-balanced BST where the depth of subtrees never differs by more than one.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Building balanced data structures from sorted data is a fundamental pattern. In infrastructure, balanced trees are used for efficient range queries on metrics data and log-structured merge trees.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Empty array → return None</li><li>Single element → single node tree</li><li>Two elements → root with one child</li><li>Array of length 3 → perfect binary tree</li><li>Large sorted array → verify balance</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Insert elements one by one. Since the array is sorted, this creates a completely skewed (linked-list-like) tree — the opposite of balanced.</div>
+<pre><code># There&#x27;s no meaningful &quot;brute force&quot; that&#x27;s worse here.
+# The naive approach IS the optimal approach for this problem.
+# A bad approach would be inserting into BST one by one:
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def sortedArrayToBST_brute(nums):
+    # Insert one by one into BST (not balanced!)
+    if not nums:
+        return None
+
+    root = TreeNode(nums[0])
+    for num in nums[1:]:
+        insert(root, num)
+    return root
+
+def insert(root, val):
+    if val &lt; root.val:
+        if root.left:
+            insert(root.left, val)
+        else:
+            root.left = TreeNode(val)
+    else:
+        if root.right:
+            insert(root.right, val)
+        else:
+            root.right = TreeNode(val)</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²) — inserting n items into a skewed BST</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Recursively pick the middle element as root, then build left subtree from the left half and right subtree from the right half. The middle element ensures balance. Each element is visited exactly once.</div>
+<pre><code>class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def sortedArrayToBST(nums):
+    if not nums:
+        return None
+
+    def build(left, right):
+        if left &gt; right:
+            return None
+
+        mid = (left + right) // 2
+        node = TreeNode(nums[mid])
+        node.left = build(left, mid - 1)
+        node.right = build(mid + 1, right)
+        return node
+
+    return build(0, len(nums) - 1)</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(log n) recursion stack</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="tier-6">
+<div class="pattern-header">
+<div class="pattern-title">Tier 6: Two Pointer &amp; Sliding Window</div>
+<div class="pattern-subtitle">Patterns for processing sequential data within constraints — directly applicable to time-series analysis, SLA window monitoring, and finding optimal resource allocation ranges.</div>
+<div class="pattern-count">4 problems</div>
+</div>
+
+<div class="problem-card medium" id="problem-3">
+<div class="problem-header" onclick="toggleProblem(3)">
+<div class="problem-info">
+<div class="problem-title">3. Longest Substring Without Repeating Characters</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Sliding Window, Hash Table, String</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-3">&#9654;</div>
+</div>
+<div class="problem-body" id="body-3" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given a string s, find the length of the longest substring without repeating characters.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">The sliding window pattern is essential for time-window analysis in monitoring. Think: &#x27;what&#x27;s the longest period where all monitored metrics were unique/within bounds?&#x27; This is the canonical sliding window problem.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Empty string → 0</li><li>All same characters: &#x27;aaaa&#x27; → 1</li><li>All unique characters → return full length</li><li>Repeating character at the start and end</li><li>String of length 1 → 1</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">For each starting position, extend until a duplicate is found. Track the longest valid window. Redundant work: doesn&#x27;t reuse information from previous windows.</div>
+<pre><code>def lengthOfLongestSubstring(s):
+    max_len = 0
+
+    for i in range(len(s)):
+        seen = set()
+        for j in range(i, len(s)):
+            if s[j] in seen:
+                break
+            seen.add(s[j])
+            max_len = max(max_len, j - i + 1)
+
+    return max_len</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(min(n, charset))</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Sliding window with a hash map tracking each character&#x27;s latest index. When a duplicate is found, jump the left pointer past the previous occurrence. The window [left, right] always contains unique characters. Each character is processed once.</div>
+<pre><code>def lengthOfLongestSubstring(s):
+    char_index = {}  # character -&gt; its latest index
+    max_len = 0
+    left = 0
+
+    for right in range(len(s)):
+        if s[right] in char_index and char_index[s[right]] &gt;= left:
+            left = char_index[s[right]] + 1
+        char_index[s[right]] = right
+        max_len = max(max_len, right - left + 1)
+
+    return max_len</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(min(n, charset))</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-11">
+<div class="problem-header" onclick="toggleProblem(11)">
+<div class="problem-info">
+<div class="problem-title">11. Container With Most Water</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Two Pointer, Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-11">&#9654;</div>
+</div>
+<div class="problem-body" id="body-11" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given n vertical lines at positions (i, 0) to (i, height[i]), find two lines that form the container holding the most water.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Maximizing area under constraints is an optimization problem. The two-pointer approach — start wide and greedily shrink — mirrors capacity optimization: start with maximum resources and intelligently reduce to find the sweet spot.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Two lines only → one possible container</li><li>All same height → widest container wins</li><li>Strictly increasing heights → optimal involves first line</li><li>Strictly decreasing heights → optimal involves last line</li><li>Single very tall line in the middle</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Try every pair of lines. Compute water as min(height) × width. Track maximum.</div>
+<pre><code>def maxArea(height):
+    max_water = 0
+
+    for i in range(len(height)):
+        for j in range(i + 1, len(height)):
+            water = min(height[i], height[j]) * (j - i)
+            max_water = max(max_water, water)
+
+    return max_water</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Start with the widest container (left=0, right=n-1). The bottleneck is the shorter line. Moving the taller line inward can only decrease width without helping height, so always move the shorter line. This greedy choice guarantees we don&#x27;t miss the optimal pair.</div>
+<pre><code>def maxArea(height):
+    left, right = 0, len(height) - 1
+    max_water = 0
+
+    while left &lt; right:
+        water = min(height[left], height[right]) * (right - left)
+        max_water = max(max_water, water)
+
+        # Move the shorter line inward (it&#x27;s the bottleneck)
+        if height[left] &lt; height[right]:
+            left += 1
+        else:
+            right -= 1
+
+    return max_water</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-15">
+<div class="problem-header" onclick="toggleProblem(15)">
+<div class="problem-info">
+<div class="problem-title">15. 3Sum</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Two Pointer, Sorting, Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-15">&#9654;</div>
+</div>
+<div class="problem-body" id="body-15" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an integer array nums, return all unique triplets [nums[i], nums[j], nums[k]] such that they sum to zero. No duplicate triplets.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Sorting + two-pointer is a pattern that tests algorithmic fluency. Apple expects senior candidates to handle this cleanly, including duplicate skipping. The constraint-satisfaction pattern (find elements meeting a target) appears in resource matching problems.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Array shorter than 3 → return []</li><li>No valid triplets → return []</li><li>[0,0,0] → [[0,0,0]]</li><li>Many duplicates requiring careful skip logic</li><li>All positive or all negative → return []</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Try all triplets. Use a set of tuples to avoid duplicates. Very slow.</div>
+<pre><code>def threeSum(nums):
+    nums.sort()
+    result = set()
+
+    for i in range(len(nums)):
+        for j in range(i+1, len(nums)):
+            for k in range(j+1, len(nums)):
+                if nums[i] + nums[j] + nums[k] == 0:
+                    result.add((nums[i], nums[j], nums[k]))
+
+    return [list(t) for t in result]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n³)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) for result set</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Sort the array. Fix one element, then use two pointers on the remaining range to find pairs that sum to the negative of the fixed element. Skip duplicates at both the outer loop and inner pointers to avoid duplicate triplets.</div>
+<pre><code>def threeSum(nums):
+    nums.sort()
+    result = []
+
+    for i in range(len(nums) - 2):
+        # Skip duplicate first elements
+        if i &gt; 0 and nums[i] == nums[i-1]:
+            continue
+
+        # Two pointer for remaining two elements
+        left, right = i + 1, len(nums) - 1
+
+        while left &lt; right:
+            total = nums[i] + nums[left] + nums[right]
+
+            if total &lt; 0:
+                left += 1
+            elif total &gt; 0:
+                right -= 1
+            else:
+                result.append([nums[i], nums[left], nums[right]])
+                # Skip duplicates
+                while left &lt; right and nums[left] == nums[left+1]:
+                    left += 1
+                while left &lt; right and nums[right] == nums[right-1]:
+                    right -= 1
+                left += 1
+                right -= 1
+
+    return result</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1) extra (excluding output)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-713">
+<div class="problem-header" onclick="toggleProblem(713)">
+<div class="problem-info">
+<div class="problem-title">713. Subarray Product Less Than K</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Sliding Window, Array</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-713">&#9654;</div>
+</div>
+<div class="problem-body" id="body-713" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array of positive integers nums and an integer k, return the number of contiguous subarrays where the product of all elements is strictly less than k.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Finding windows that satisfy a threshold constraint maps directly to: &#x27;how many time windows have aggregate load below our SLA limit?&#x27; This is a core capacity monitoring pattern — counting compliant intervals.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>k &lt;= 1 → return 0 (all positive, product &gt;= 1)</li><li>Single element &gt;= k → doesn&#x27;t count</li><li>All elements are 1 → every subarray has product 1</li><li>Product overflows (use careful multiplication)</li><li>Empty array → return 0</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">For each starting index, extend the window and track the running product. Stop when product &gt;= k (since all elements are positive, further extension only increases product).</div>
+<pre><code>def numSubarrayProductLessThanK(nums, k):
+    if k &lt;= 1:
+        return 0
+
+    count = 0
+    for i in range(len(nums)):
+        product = 1
+        for j in range(i, len(nums)):
+            product *= nums[j]
+            if product &lt; k:
+                count += 1
+            else:
+                break
+
+    return count</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Sliding window maintaining a running product. When product &gt;= k, shrink from the left. For each right position, the number of valid subarrays ending there is (right - left + 1). Each element enters and leaves the window at most once.</div>
+<pre><code>def numSubarrayProductLessThanK(nums, k):
+    if k &lt;= 1:
+        return 0
+
+    count = 0
+    product = 1
+    left = 0
+
+    for right in range(len(nums)):
+        product *= nums[right]
+
+        while product &gt;= k:
+            product //= nums[left]
+            left += 1
+
+        # All subarrays ending at right with start in [left, right]
+        count += right - left + 1
+
+    return count</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(1)</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="tier-7">
+<div class="pattern-header">
+<div class="pattern-title">Tier 7: Essential Pattern Coverage</div>
+<div class="pattern-subtitle">Rounding out the core patterns Apple tests — stack operations, hash-based grouping, and nested structure parsing. These appear frequently in phone screens.</div>
+<div class="pattern-count">3 problems</div>
+</div>
+
+<div class="problem-card easy" id="problem-20">
+<div class="problem-header" onclick="toggleProblem(20)">
+<div class="problem-info">
+<div class="problem-title">20. Valid Parentheses</div>
+<div class="problem-meta">
+<span class="difficulty-badge easy">Easy</span>
+<span class="pattern-tag">Stack, String</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-20">&#9654;</div>
+</div>
+<div class="problem-body" id="body-20" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given a string containing &#x27;(&#x27;, &#x27;)&#x27;, &#x27;{&#x27;, &#x27;}&#x27;, &#x27;[&#x27;, &#x27;]&#x27;, determine if the input string is valid: matching brackets, correct order, every close has a matching open.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Stack-based matching is an Apple phone screen staple. Beyond interviews, bracket/delimiter validation is used in config file parsing, query validation, and infrastructure-as-code linting.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Empty string → True</li><li>Single bracket → False</li><li>Only opening brackets → False</li><li>Only closing brackets → False</li><li>Interleaved types: &#x27;([{}])&#x27; → True</li><li>Wrong order: &#x27;([)]&#x27; → False</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Repeatedly remove adjacent matching pairs until none remain. If the string is empty, it was valid. Conceptually simple but inefficient due to repeated string operations.</div>
+<pre><code>def isValid(s):
+    # Repeatedly remove innermost valid pairs
+    while &#x27;()&#x27; in s or &#x27;[]&#x27; in s or &#x27;{}&#x27; in s:
+        s = s.replace(&#x27;()&#x27;, &#x27;&#x27;)
+        s = s.replace(&#x27;[]&#x27;, &#x27;&#x27;)
+        s = s.replace(&#x27;{}&#x27;, &#x27;&#x27;)
+
+    return s == &#x27;&#x27;  </code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n²) — each replace is O(n), up to n/2 rounds</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) for string copies</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Use a stack. Push opening brackets. On closing brackets, check if the top of the stack is the matching opener. If not, invalid. At the end, the stack must be empty. One pass, each character handled exactly once.</div>
+<pre><code>def isValid(s):
+    stack = []
+    matching = {&#x27;)&#x27;: &#x27;(&#x27;, &#x27;]&#x27;: &#x27;[&#x27;, &#x27;}&#x27;: &#x27;{&#x27;}
+
+    for char in s:
+        if char in matching:
+            # Closing bracket: check top of stack
+            if not stack or stack[-1] != matching[char]:
+                return False
+            stack.pop()
+        else:
+            # Opening bracket: push to stack
+            stack.append(char)
+
+    return len(stack) == 0</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n)</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-49">
+<div class="problem-header" onclick="toggleProblem(49)">
+<div class="problem-info">
+<div class="problem-title">49. Group Anagrams</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Hash Table, String, Sorting</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-49">&#9654;</div>
+</div>
+<div class="problem-body" id="body-49" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an array of strings, group the anagrams together. Return the groups in any order.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Hash-based grouping is the pattern behind log categorization, metric aggregation, and error classification. At Apple, you&#x27;d group similar resource usage patterns to identify common capacity profiles.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>Single string → one group with one element</li><li>Empty string in input → groups with other empty strings</li><li>All strings are anagrams → one big group</li><li>No anagrams → each string in its own group</li><li>Strings of different lengths can&#x27;t be anagrams</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">For each string, compare sorted versions against all others. Very slow with repeated sorting and n² comparisons.</div>
+<pre><code>def groupAnagrams(strs):
+    groups = []
+    used = [False] * len(strs)
+
+    for i in range(len(strs)):
+        if used[i]:
+            continue
+        group = [strs[i]]
+        used[i] = True
+
+        for j in range(i + 1, len(strs)):
+            if not used[j] and sorted(strs[i]) == sorted(strs[j]):
+                group.append(strs[j])
+                used[j] = True
+
+        groups.append(group)
+
+    return groups</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n² × k log k) where k = max string length</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n × k)</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Use sorted string as a hash key — all anagrams sort to the same key. Group into a defaultdict. One pass through the array, each string sorted once. Alternative O(n × k) approach: use character frequency tuple as key instead of sorting.</div>
+<pre><code>def groupAnagrams(strs):
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+
+    for s in strs:
+        # Sort the string as a canonical key
+        key = tuple(sorted(s))
+        groups[key].append(s)
+
+    return list(groups.values())</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n × k log k) where k = max string length</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n × k)</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="problem-card medium" id="problem-394">
+<div class="problem-header" onclick="toggleProblem(394)">
+<div class="problem-info">
+<div class="problem-title">394. Decode String</div>
+<div class="problem-meta">
+<span class="difficulty-badge medium">Medium</span>
+<span class="pattern-tag">Stack, String</span>
+</div>
+</div>
+<div class="expand-icon" id="icon-394">&#9654;</div>
+</div>
+<div class="problem-body" id="body-394" style="display:none;">
+<div class="section">
+<div class="section-title">&#128203; Problem Statement</div>
+<div class="section-text">Given an encoded string like &#x27;3[a2[c]]&#x27;, decode it. The pattern k[encoded_string] means repeat the encoded_string k times. Example: &#x27;3[a2[c]]&#x27; → &#x27;accaccacc&#x27;.</div>
+</div>
+<div class="section rationale-section">
+<div class="section-title">&#127919; Why This Problem for This Role</div>
+<div class="section-text">Stack-based nested structure parsing is relevant to processing configuration templates, infrastructure-as-code expansions, and nested resource definitions. Tests your ability to handle recursive structures iteratively.</div>
+</div>
+<div class="section edge-section">
+<div class="section-title">&#9888;&#65039; Edge Cases</div>
+<ul class="edge-list"><li>No encoding: &#x27;abc&#x27; → &#x27;abc&#x27;</li><li>Single level: &#x27;3[a]&#x27; → &#x27;aaa&#x27;</li><li>Nested: &#x27;2[a3[b]]&#x27; → &#x27;abbbabbb&#x27;</li><li>Multiple sequential: &#x27;2[a]3[b]&#x27; → &#x27;aabbb&#x27;</li><li>Large repeat count: &#x27;100[a]&#x27;</li></ul>
+</div>
+<div class="approach-section brute-force">
+<div class="approach-title">&#128308; Brute Force</div>
+<div class="section-text">Recursive parsing. When we see a digit, parse the number, skip &#x27;[&#x27;, recurse for inner content, skip &#x27;]&#x27;. Letters are appended directly. Clean but uses call stack proportional to nesting depth.</div>
+<pre><code>def decodeString(s):
+    # Recursive approach (conceptually simpler)
+    def decode(s, i):
+        result = &quot;&quot;
+
+        while i &lt; len(s) and s[i] != &#x27;]&#x27;:
+            if s[i].isalpha():
+                result += s[i]
+                i += 1
+            elif s[i].isdigit():
+                # Parse the number
+                num = 0
+                while i &lt; len(s) and s[i].isdigit():
+                    num = num * 10 + int(s[i])
+                    i += 1
+                i += 1  # skip &#x27;[&#x27;
+                # Recurse for inner content
+                inner, i = decode(s, i)
+                i += 1  # skip &#x27;]&#x27;
+                result += num * inner
+            else:
+                i += 1
+
+        return result, i
+
+    return decode(s, 0)[0]</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n × max_repeat) where n = output length</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) for recursion depth</span></div>
+</div>
+</div>
+<div class="approach-section optimized">
+<div class="approach-title">&#128994; Optimal Solution</div>
+<div class="section-text">Iterative stack approach. On &#x27;[&#x27;, push the current string and number, reset both. On &#x27;]&#x27;, pop and combine: previous_string + count × current_string. Letters accumulate in current_str. Digits build current_num. The stack depth equals the nesting level.</div>
+<pre><code>def decodeString(s):
+    stack = []
+    current_str = &quot;&quot;
+    current_num = 0
+
+    for char in s:
+        if char.isdigit():
+            current_num = current_num * 10 + int(char)
+        elif char == &#x27;[&#x27;:
+            # Save current state and start fresh
+            stack.append((current_str, current_num))
+            current_str = &quot;&quot;
+            current_num = 0
+        elif char == &#x27;]&#x27;:
+            # Pop and build: previous_str + num * current_str
+            prev_str, num = stack.pop()
+            current_str = prev_str + num * current_str
+        else:
+            current_str += char
+
+    return current_str</code></pre>
+<div class="complexity-info">
+<div class="complexity-item"><strong>Time:</strong> <span class="complexity-value">O(n × max_repeat) where n = output length</span></div>
+<div class="complexity-item"><strong>Space:</strong> <span class="complexity-value">O(n) for stack</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+<script>
+let completed = JSON.parse(localStorage.getItem('lc_completed') || '{}');
+updateProgress();
+
+function toggleProblem(num) {
+    const body = document.getElementById('body-' + num);
+    const icon = document.getElementById('icon-' + num);
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        icon.classList.add('open');
+    } else {
+        body.style.display = 'none';
+        icon.classList.remove('open');
+    }
+}
+
+function scrollToTier(id) {
+    document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('lc_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+}
+
+if (localStorage.getItem('lc_theme') === 'dark') document.body.classList.add('dark-mode');
+
+function filterProblems() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.problem-card').forEach(card => {
+        const title = card.querySelector('.problem-title').textContent.toLowerCase();
+        const meta = card.querySelector('.problem-meta').textContent.toLowerCase();
+        card.style.display = (title.includes(query) || meta.includes(query)) ? '' : 'none';
+    });
+}
+
+function updateProgress() {
+    const total = 30;
+    const done = Object.keys(completed).length;
+    document.getElementById('progressFill').style.width = (done/total*100) + '%';
+    document.getElementById('progressText').textContent = done + '/' + total;
+    document.querySelectorAll('.problem-card').forEach(card => {
+        const num = card.id.replace('problem-','');
+        if (completed[num]) card.classList.add('completed');
+        else card.classList.remove('completed');
+    });
+}
+</script>
+</body>
+</html>
