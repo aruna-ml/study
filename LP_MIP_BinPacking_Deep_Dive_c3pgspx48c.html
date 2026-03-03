@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LP, MIP &amp; Bin Packing — Capacity Planning Optimization</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+
+:root {
+  --sidebar-width: 290px;
+  --bg: #fafafa;
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #c4c4d4;
+  --sidebar-active: #e94560;
+  --sidebar-hover: #16213e;
+  --accent: #0071e3;
+  --accent-light: #e8f2fd;
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --card-bg: #ffffff;
+  --border: #e5e5ea;
+  --code-bg: #f5f5f7;
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --danger: #ff3b30;
+  --info: #5ac8fa;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; font-size: 16px;
+}
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-width);
+  background: var(--sidebar-bg); overflow-y: auto; z-index: 100;
+  scrollbar-width: thin; scrollbar-color: #333 var(--sidebar-bg);
+}
+.sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sidebar-header h2 { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
+.sidebar-header .subtitle { color: var(--sidebar-text); font-size: 12px; margin-top: 4px; opacity: 0.7; }
+.nav-section { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.nav-section-title {
+  color: var(--sidebar-active); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 20px 6px;
+}
+.nav-link {
+  display: block; padding: 7px 20px 7px 28px; color: var(--sidebar-text);
+  text-decoration: none; font-size: 13.5px; transition: all 0.15s;
+  border-left: 3px solid transparent; line-height: 1.4;
+}
+.nav-link:hover { background: var(--sidebar-hover); color: #fff; }
+.nav-link.active { color: #fff; background: var(--sidebar-hover); border-left-color: var(--sidebar-active); font-weight: 500; }
+.nav-link.sub { padding-left: 40px; font-size: 12.5px; opacity: 0.85; }
+.progress-container {
+  padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.05);
+  position: sticky; bottom: 0; background: var(--sidebar-bg);
+}
+.progress-label { color: var(--sidebar-text); font-size: 11px; margin-bottom: 6px; }
+.progress-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--sidebar-active); border-radius: 2px; width: 0%; transition: width 0.3s; }
+.main { margin-left: var(--sidebar-width); padding: 40px 60px 100px; max-width: 980px; }
+.section { margin-bottom: 80px; scroll-margin-top: 24px; }
+.section-number {
+  display: inline-block; background: var(--sidebar-active); color: #fff;
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px;
+  margin-bottom: 12px; letter-spacing: 0.5px;
+}
+h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; color: var(--text); }
+h1 .thin { font-weight: 300; color: var(--text-secondary); }
+h2 { font-size: 24px; font-weight: 600; margin: 48px 0 16px; color: var(--text); letter-spacing: -0.3px; scroll-margin-top: 24px; }
+h3 { font-size: 19px; font-weight: 600; margin: 32px 0 12px; color: var(--text); }
+h4 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; color: var(--text); }
+p { margin-bottom: 16px; }
+.lead { font-size: 18px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 32px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 20px 0; }
+.card.accent { border-left: 4px solid var(--accent); background: var(--accent-light); }
+.card.warning { border-left: 4px solid var(--warning); background: #fff8ee; }
+.card.success { border-left: 4px solid var(--success); background: #f0faf2; }
+.card.danger { border-left: 4px solid var(--danger); background: #fff5f5; }
+.card-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14.5px; }
+thead th {
+  background: var(--sidebar-bg); color: #fff; padding: 12px 16px; text-align: left;
+  font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+thead th:first-child { border-radius: 8px 0 0 0; }
+thead th:last-child { border-radius: 0 8px 0 0; }
+tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:hover { background: var(--accent-light); }
+.code-block {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 20px 0; white-space: pre;
+}
+code {
+  font-family: 'SF Mono', 'Fira Code', monospace; background: var(--code-bg);
+  padding: 2px 6px; border-radius: 4px; font-size: 14px;
+}
+.diagram {
+  background: #fff; border: 2px solid var(--border); border-radius: 12px;
+  padding: 24px; margin: 24px 0; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12.5px; line-height: 1.5; white-space: pre; overflow-x: auto;
+}
+.collapsible { margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.collapsible-header {
+  padding: 14px 20px; background: var(--card-bg); cursor: pointer; font-weight: 600;
+  font-size: 15px; display: flex; justify-content: space-between; align-items: center;
+  user-select: none; transition: background 0.15s;
+}
+.collapsible-header:hover { background: var(--code-bg); }
+.collapsible-header::after { content: '+'; font-size: 20px; color: var(--accent); font-weight: 300; }
+.collapsible.open .collapsible-header::after { content: '\2212'; }
+.collapsible-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.collapsible.open .collapsible-body { max-height: 12000px; }
+.collapsible-content { padding: 16px 20px 20px; border-top: 1px solid var(--border); }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
+.tag.blue { background: #e3f0ff; color: #0055b3; }
+.tag.green { background: #e6f9e8; color: #1b7a2b; }
+.tag.orange { background: #fff3e0; color: #b36b00; }
+.tag.red { background: #ffe5e5; color: #b30000; }
+.tag.purple { background: #f0e6ff; color: #6b21a8; }
+.qa { margin: 20px 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.qa-question {
+  padding: 16px 20px; background: var(--sidebar-bg); color: #fff; font-weight: 600;
+  font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+}
+.qa-question::after {
+  content: 'Show Answer'; font-size: 11px; font-weight: 500; flex-shrink: 0;
+  background: var(--sidebar-active); padding: 4px 10px; border-radius: 4px;
+}
+.qa.open .qa-question::after { content: 'Hide'; }
+.qa-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+.qa.open .qa-answer { max-height: 12000px; }
+.qa-answer-content { padding: 20px; background: #fff; }
+.qa-answer-content p:last-child { margin-bottom: 0; }
+.followup { margin: 16px 0 0 0; padding: 16px; background: var(--code-bg); border-radius: 8px; border-left: 3px solid var(--accent); }
+.followup-q { font-weight: 600; font-size: 14px; color: var(--accent); margin-bottom: 6px; }
+.followup-a { font-size: 14px; color: var(--text); line-height: 1.6; }
+hr { border: none; height: 1px; background: var(--border); margin: 40px 0; }
+.divider {
+  display: flex; align-items: center; gap: 16px; margin: 48px 0 32px;
+  color: var(--text-secondary); font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.math-block {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 24px 28px; margin: 20px 0; overflow-x: auto; line-height: 2.2;
+}
+.math-block .math-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; display: block;
+}
+.katex { font-size: 1.05em; }
+.katex-display { margin: 0.8em 0; }
+ul, ol { margin: 12px 0 16px 24px; }
+li { margin-bottom: 6px; }
+mark { background: #fff3cd; padding: 1px 4px; border-radius: 3px; }
+strong { font-weight: 600; }
+.bridge {
+  background: linear-gradient(135deg, #f0e6ff 0%, #e3f0ff 100%);
+  border: 1px solid #d4c5f9; border-radius: 10px; padding: 20px; margin: 20px 0;
+}
+.bridge-title { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b21a8; margin-bottom: 8px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px; }
+  .two-col, .three-col { grid-template-columns: 1fr; }
+}
+.step { display: flex; gap: 16px; margin: 20px 0; align-items: flex-start; }
+.step-num {
+  flex-shrink: 0; width: 32px; height: 32px; background: var(--accent); color: #fff;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; margin-top: 2px;
+}
+.step-content { flex: 1; }
+.step-content p:last-child { margin-bottom: 0; }
+.var-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.var-table th { background: var(--accent); color: #fff; padding: 10px 14px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.var-table th:first-child { border-radius: 8px 0 0 0; }
+.var-table th:last-child { border-radius: 0 8px 0 0; }
+.var-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.var-table tr:hover { background: var(--accent-light); }
+.var-table code { font-size: 13px; }
+
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h2>LP, MIP &amp; Bin Packing</h2>
+    <div class="subtitle">Optimization for Capacity Planning</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 1 — Foundations</div>
+    <a href="#s1" class="nav-link">Introduction &amp; When to Use What</a>
+    <a href="#s1-landscape" class="nav-link sub">Optimization Landscape</a>
+    <a href="#s1-lp-intro" class="nav-link sub">LP Fundamentals</a>
+    <a href="#s1-mip-intro" class="nav-link sub">MIP Fundamentals</a>
+    <a href="#s1-bp-intro" class="nav-link sub">Bin Packing Fundamentals</a>
+    <a href="#s1-when" class="nav-link sub">Decision Guide</a>
+    <a href="#s1-duality" class="nav-link sub">Duality &amp; Shadow Prices</a>
+    <a href="#s1-binding" class="nav-link sub">Binding Constraints</a>
+    <a href="#s1-penalties" class="nav-link sub">Penalties &amp; Soft Constraints</a>
+    <a href="#s1-mipgap" class="nav-link sub">MIP Gap</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 2 — LP Example</div>
+    <a href="#s2" class="nav-link">LP Formulation: Resource Allocation</a>
+    <a href="#s2-scenario" class="nav-link sub">Scenario Setup</a>
+    <a href="#s2-variables" class="nav-link sub">Variable Dictionary</a>
+    <a href="#s2-formulation" class="nav-link sub">Complete Formulation</a>
+    <a href="#s2-solve" class="nav-link sub">Solving &amp; Interpreting</a>
+    <a href="#s2-duals" class="nav-link sub">Dual Analysis</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 3 — MIP Example</div>
+    <a href="#s3" class="nav-link">MIP Formulation: Node Procurement</a>
+    <a href="#s3-scenario" class="nav-link sub">Scenario Setup</a>
+    <a href="#s3-variables" class="nav-link sub">Variable Dictionary</a>
+    <a href="#s3-formulation" class="nav-link sub">Complete Formulation</a>
+    <a href="#s3-solve" class="nav-link sub">Solving &amp; MIP Gap</a>
+    <a href="#s3-sensitivity" class="nav-link sub">Sensitivity Analysis</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 4 — Bin Packing</div>
+    <a href="#s4" class="nav-link">Bin Packing: Service Placement</a>
+    <a href="#s4-scenario" class="nav-link sub">Scenario Setup</a>
+    <a href="#s4-variables" class="nav-link sub">Variable Dictionary</a>
+    <a href="#s4-formulation" class="nav-link sub">Complete Formulation</a>
+    <a href="#s4-heuristics" class="nav-link sub">Heuristics &amp; Relaxations</a>
+    <a href="#s4-multi" class="nav-link sub">Multi-Dimensional Extension</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Interview Prep</div>
+    <a href="#s5" class="nav-link">Interview Q&amp;A</a>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-label">Reading progress</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</nav>
+
+<div class="main">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--                    SECTION 1: FOUNDATIONS                      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section" id="s1">
+  <div class="section-number">SECTION 1</div>
+  <h1>Introduction <span class="thin">& General Knowledge</span></h1>
+  <p class="lead">Capacity planning at hyperscale is an optimization problem. You have finite budget, finite data-center power, and finite hardware supply. The question is: <em>what to buy, where to place it, and how to assign workloads</em> — while minimizing cost and meeting all service-level objectives. LP, MIP, and Bin Packing are the three primary formulation families used to solve this.</p>
+
+  <h2 id="s1-landscape">The Optimization Landscape</h2>
+
+  <div class="diagram">
+                              Optimization Formulations
+                              ═════════════════════════
+                                        │
+              ┌─────────────────────────┼──────────────────────────┐
+              │                         │                          │
+    ┌─────────▼─────────┐   ┌──────────▼──────────┐   ┌──────────▼──────────┐
+    │  Linear Program   │   │  Mixed-Integer Prog  │   │    Bin Packing      │
+    │      (LP)         │   │      (MIP)           │   │   (BP / VBP)        │
+    ├───────────────────┤   ├─────────────────────┤   ├─────────────────────┤
+    │ All variables     │   │ Some variables       │   │ Assign items to     │
+    │ continuous (ℝ)    │   │ integer (ℤ), rest    │   │ fixed-capacity      │
+    │                   │   │ continuous (ℝ)       │   │ bins; minimize #    │
+    │ Polynomial time   │   │ NP-hard in general   │   │ of bins used        │
+    │ (simplex / IPM)   │   │ (branch &amp; bound)    │   │                     │
+    │                   │   │                      │   │ Special case of MIP │
+    │ Exact duals &amp;    │   │ Approx. duals via    │   │ with 0-1 assignment │
+    │ shadow prices     │   │ LP relaxation        │   │ variables           │
+    └───────────────────┘   └─────────────────────┘   └─────────────────────┘
+              │                         │                          │
+              ▼                         ▼                          ▼
+     "How much of each           "How many whole          "Which services go
+      resource to allocate?"      servers to buy?"         on which servers?"</div>
+
+  <h2 id="s1-lp-intro">LP — Linear Programming Fundamentals</h2>
+  <p>An LP is an optimization problem where the objective function and all constraints are <strong>linear</strong>, and all decision variables are <strong>continuous</strong> (can take any real value).</p>
+
+  <div class="math-block">
+    <span class="math-label">Standard LP Form</span>
+    $$\min \; \mathbf{c}^\top \mathbf{x}$$
+    $$\text{subject to:} \quad A\mathbf{x} \geq \mathbf{b}, \quad \mathbf{x} \geq \mathbf{0}$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>Symbol</th><th>Type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(\mathbf{x} \in \mathbb{R}^n\)</td><td>Decision vector</td><td>The unknowns we are solving for (e.g., amount of each resource to allocate)</td></tr>
+      <tr><td>\(\mathbf{c} \in \mathbb{R}^n\)</td><td>Cost vector</td><td>Per-unit cost coefficient for each decision variable</td></tr>
+      <tr><td>\(A \in \mathbb{R}^{m \times n}\)</td><td>Constraint matrix</td><td>Encodes how each variable contributes to each constraint</td></tr>
+      <tr><td>\(\mathbf{b} \in \mathbb{R}^m\)</td><td>RHS vector</td><td>Right-hand side: the minimum (or maximum) requirements</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card success">
+    <div class="card-title">Key LP Properties</div>
+    <ul>
+      <li><strong>Solvable in polynomial time</strong> — interior-point methods are O(n³·L); simplex is exponential worst-case but fast in practice.</li>
+      <li><strong>Optimal solution lies at a vertex</strong> of the feasible polyhedron (simplex exploits this).</li>
+      <li><strong>Strong duality</strong> — the dual problem gives exact shadow prices for every constraint.</li>
+      <li><strong>No integrality</strong> — you can buy "3.7 servers," which is unrealistic for hardware procurement but fine for continuous resource allocation (CPU shares, bandwidth fractions).</li>
+    </ul>
+  </div>
+
+  <h2 id="s1-mip-intro">MIP — Mixed-Integer Programming Fundamentals</h2>
+  <p>A MIP extends LP by requiring some decision variables to be <strong>integers</strong>. When all integer variables are binary (0 or 1), it's a <strong>Binary Integer Program (BIP)</strong>. When all variables are integer, it's a pure <strong>Integer Program (IP)</strong>.</p>
+
+  <div class="math-block">
+    <span class="math-label">Standard MIP Form</span>
+    $$\min \; \mathbf{c}^\top \mathbf{x} + \mathbf{d}^\top \mathbf{y}$$
+    $$\text{subject to:} \quad A\mathbf{x} + B\mathbf{y} \geq \mathbf{b}$$
+    $$\mathbf{x} \geq \mathbf{0}, \quad \mathbf{y} \in \mathbb{Z}_{\geq 0}$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>Symbol</th><th>Type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(\mathbf{x} \in \mathbb{R}^{n_1}\)</td><td>Continuous variables</td><td>Fractional quantities (e.g., CPU shares allocated, bandwidth fraction)</td></tr>
+      <tr><td>\(\mathbf{y} \in \mathbb{Z}^{n_2}\)</td><td>Integer variables</td><td>Whole-unit quantities (e.g., number of servers to purchase)</td></tr>
+      <tr><td>\(\mathbf{c}, \mathbf{d}\)</td><td>Cost vectors</td><td>Per-unit cost for continuous and integer variables respectively</td></tr>
+      <tr><td>\(A, B\)</td><td>Constraint matrices</td><td>Coefficients linking variables to constraints</td></tr>
+      <tr><td>\(\mathbf{b}\)</td><td>RHS vector</td><td>Resource demands, budget caps, capacity limits</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card danger">
+    <div class="card-title">MIP Complexity: NP-Hard</div>
+    <p>Adding integrality constraints makes the problem NP-hard. Solvers use <strong>branch-and-bound</strong> (systematically explore integer assignments), <strong>cutting planes</strong> (tighten the LP relaxation), and <strong>heuristics</strong> (find good feasible solutions early). For capacity planning problems with 10K–100K integer variables, modern solvers (Gurobi, CPLEX) typically converge within minutes to hours, depending on problem structure and the acceptable MIP gap.</p>
+  </div>
+
+  <h2 id="s1-bp-intro">Bin Packing — Fundamentals</h2>
+  <p>The Bin Packing Problem (BPP) asks: given a set of <strong>items</strong> (services/workloads) each with a known size, and a set of <strong>bins</strong> (servers/nodes) each with a known capacity, assign all items to bins such that no bin exceeds its capacity, while <strong>minimizing the number of bins used</strong>.</p>
+
+  <div class="math-block">
+    <span class="math-label">Classic 1-D Bin Packing</span>
+    $$\min \sum_{j=1}^{m} z_j$$
+    $$\text{s.t.} \quad \sum_{i=1}^{n} w_i \cdot x_{ij} \leq C \cdot z_j \quad \forall \; j = 1, \ldots, m$$
+    $$\sum_{j=1}^{m} x_{ij} = 1 \quad \forall \; i = 1, \ldots, n$$
+    $$x_{ij} \in \{0,1\}, \quad z_j \in \{0,1\}$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>Symbol</th><th>Type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(n\)</td><td>Parameter</td><td>Number of items (service instances to place)</td></tr>
+      <tr><td>\(m\)</td><td>Parameter</td><td>Number of available bins (servers); set as upper bound \(m = n\)</td></tr>
+      <tr><td>\(w_i\)</td><td>Parameter</td><td>Size of item \(i\) (e.g., CPU cores required by service \(i\))</td></tr>
+      <tr><td>\(C\)</td><td>Parameter</td><td>Capacity of each bin (e.g., total CPU cores per server)</td></tr>
+      <tr><td>\(x_{ij} \in \{0,1\}\)</td><td>Decision variable</td><td>1 if item \(i\) is assigned to bin \(j\), 0 otherwise</td></tr>
+      <tr><td>\(z_j \in \{0,1\}\)</td><td>Decision variable</td><td>1 if bin \(j\) is used (has at least one item), 0 otherwise</td></tr>
+    </tbody>
+  </table>
+
+  <p>In capacity planning, <strong>multi-dimensional bin packing</strong> is more realistic: each item has requirements in multiple dimensions (CPU, RAM, GPU, storage, network), and each bin has capacities in all dimensions. This is also called <strong>vector bin packing (VBP)</strong>.</p>
+
+  <h2 id="s1-when">When to Use LP vs. MIP vs. Bin Packing</h2>
+
+  <table>
+    <thead>
+      <tr><th>Criterion</th><th><span class="tag blue">LP</span></th><th><span class="tag red">MIP</span></th><th><span class="tag green">Bin Packing</span></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Decision granularity</strong></td>
+        <td>Fractional resources OK (CPU shares, bandwidth %)</td>
+        <td>Must buy whole servers / racks</td>
+        <td>Must assign whole workloads to whole servers</td>
+      </tr>
+      <tr>
+        <td><strong>Primary question</strong></td>
+        <td>"How much of each resource across DCs?"</td>
+        <td>"How many of each node type to procure?"</td>
+        <td>"Which workloads go on which specific machines?"</td>
+      </tr>
+      <tr>
+        <td><strong>Planning horizon</strong></td>
+        <td>Strategic / long-term (6–24 months)</td>
+        <td>Medium-term procurement (3–12 months)</td>
+        <td>Short-term scheduling (real-time → days)</td>
+      </tr>
+      <tr>
+        <td><strong>Scale</strong></td>
+        <td>Handles millions of variables</td>
+        <td>Thousands–tens of thousands of integer vars practical</td>
+        <td>Exact: ~1,000 items; heuristics: millions</td>
+      </tr>
+      <tr>
+        <td><strong>Shadow prices</strong></td>
+        <td>Exact, from strong duality</td>
+        <td>Approximate, from LP relaxation</td>
+        <td>Not directly available; use LP relaxation</td>
+      </tr>
+      <tr>
+        <td><strong>Solve time</strong></td>
+        <td>Seconds (even for large instances)</td>
+        <td>Minutes to hours (branch &amp; bound)</td>
+        <td>Exact: exponential; heuristics: milliseconds</td>
+      </tr>
+      <tr>
+        <td><strong>Capacity planning use</strong></td>
+        <td>Initial sizing, what-if analysis, shadow prices</td>
+        <td>Procurement plan with budget constraints</td>
+        <td>Workload scheduler, cluster packing</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card accent">
+    <div class="card-title">Typical Pipeline: LP → MIP → Bin Packing</div>
+    <p>In practice, capacity planning uses all three in a pipeline:</p>
+    <ol>
+      <li><strong>LP relaxation first</strong> — solve quickly to get shadow prices, feasibility check, and a lower bound on cost.</li>
+      <li><strong>MIP for procurement</strong> — using the LP solution as a warm start, solve with integrality to get the exact number of each node type per data center.</li>
+      <li><strong>Bin packing for placement</strong> — given the purchased fleet, assign individual service instances to specific machines in real-time.</li>
+    </ol>
+  </div>
+
+  <h2 id="s1-duality">Duality & Shadow Prices</h2>
+  <p>Every LP has a <strong>dual problem</strong>. Where the primal asks "minimize cost subject to meeting demand," the dual asks "maximize the value of demand subject to not exceeding unit costs." The fundamental theorem:</p>
+
+  <div class="math-block">
+    <span class="math-label">Strong Duality Theorem</span>
+    $$\text{If the primal LP has an optimal solution } \mathbf{x}^*, \text{ then the dual has an optimal solution } \boldsymbol{\lambda}^* \text{ with:}$$
+    $$\mathbf{c}^\top \mathbf{x}^* = \mathbf{b}^\top \boldsymbol{\lambda}^*$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>Symbol</th><th>Name</th><th>Interpretation in Capacity Planning</th></tr></thead>
+    <tbody>
+      <tr><td>\(\lambda_i^*\)</td><td>Shadow price (dual variable) for constraint \(i\)</td><td>Marginal cost reduction if the RHS of constraint \(i\) is relaxed by one unit. E.g., "if we had one more GPU, total cost would decrease by \(\lambda_{\text{GPU}}^*\) dollars."</td></tr>
+      <tr><td>\(\lambda_i^* = 0\)</td><td>Non-binding constraint</td><td>This resource has slack — we have more than enough. Buying more provides zero benefit.</td></tr>
+      <tr><td>\(\lambda_i^* > 0\)</td><td>Binding constraint</td><td>This resource is at its limit. Every additional unit is worth \(\lambda_i^*\) in cost savings.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card warning">
+    <div class="card-title">Shadow Prices in MIP</div>
+    <p>MIP problems do <strong>not</strong> have exact duals because of the integrality requirement. However, the <strong>LP relaxation</strong> (drop integrality) gives approximate shadow prices. These are still extremely useful: they indicate which constraints are tight and what the marginal value of relaxation would be if we could buy fractional servers. In practice, LP relaxation shadow prices are the primary tool for resource valuation in capacity planning.</p>
+  </div>
+
+  <h2 id="s1-binding">Binding Constraints</h2>
+  <p>A constraint is <strong>binding</strong> (or <strong>active</strong>) at the optimal solution if it holds with equality. A constraint is <strong>non-binding</strong> (has <strong>slack</strong>) if there is room to spare.</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Binding: \(a_i^\top \mathbf{x}^* = b_i\)</div>
+      <p>The resource is <strong>fully consumed</strong>. Shadow price \(\lambda_i^* > 0\). This is the bottleneck — adding more of this resource directly improves the objective.</p>
+      <p><em>Example:</em> GPU capacity constraint is binding — you've used every GPU you have. The shadow price tells you what each additional GPU is worth.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Non-binding: \(a_i^\top \mathbf{x}^* > b_i\)</div>
+      <p>The resource has <strong>slack</strong>: \(s_i = a_i^\top \mathbf{x}^* - b_i > 0\). Shadow price \(\lambda_i^* = 0\). Buying more of this resource does nothing.</p>
+      <p><em>Example:</em> CPU constraint is non-binding with 2,000 cores of slack — CPUs are abundant because you over-purchased to satisfy memory demand.</p>
+    </div>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">Complementary Slackness</div>
+    <p>A fundamental LP result: at optimality, \(\lambda_i^* \cdot s_i = 0\) for every constraint. Either the constraint is tight (slack = 0, shadow price possibly &gt; 0) or it has slack (shadow price = 0). Both cannot be positive simultaneously. This is the mathematical reason shadow prices work as "scarce-resource indicators."</p>
+  </div>
+
+  <h2 id="s1-penalties">Penalties & Soft Constraints</h2>
+  <p>Some constraints in capacity planning are "soft" — violating them is undesirable but not physically impossible. We model soft constraints using <strong>penalty variables</strong> and <strong>penalty costs</strong> in the objective function.</p>
+
+  <div class="math-block">
+    <span class="math-label">Hard vs. Soft Constraint Conversion</span>
+    <p style="margin-bottom:12px;">Hard constraint (demand must be met exactly):</p>
+    $$\sum_{n} a_{r,n} \cdot x_n \geq D_r$$
+    <p style="margin-bottom:12px;">Soft constraint (demand can be unmet, at a cost):</p>
+    $$\sum_{n} a_{r,n} \cdot x_n + u_r \geq D_r, \quad u_r \geq 0$$
+    $$\text{Add to objective:} \quad + \; M_r \cdot u_r$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>Symbol</th><th>Type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(u_r \geq 0\)</td><td>Slack / penalty variable</td><td>Amount of demand \(r\) left unmet</td></tr>
+      <tr><td>\(M_r\)</td><td>Penalty coefficient</td><td>Cost per unit of unmet demand. Set very high (Big-M) to make unmet demand a last resort; set moderately to allow graceful shedding of low-priority demand.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card accent">
+    <div class="card-title">Service Tiering via Penalties</div>
+    <p>Different services get different penalty costs: Tier-0 (core iCloud auth): \(M = \$100{,}000\) per unmet unit — effectively a hard constraint. Tier-1 (Photos sync): \(M = \$10{,}000\). Tier-2 (analytics batch jobs): \(M = \$500\). Under budget pressure, the optimizer will shed Tier-2 demand first, then Tier-1, and never Tier-0.</p>
+  </div>
+
+  <h2 id="s1-mipgap">MIP Gap</h2>
+  <p>MIP solvers don't always find the <em>proven</em> optimal solution within a practical time limit. The <strong>MIP gap</strong> measures how close the best found solution is to the theoretical best possible.</p>
+
+  <div class="math-block">
+    <span class="math-label">MIP Gap Definition</span>
+    $$\text{MIP Gap} = \frac{z_{\text{incumbent}} - z_{\text{LP bound}}}{z_{\text{incumbent}}} \times 100\%$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(z_{\text{incumbent}}\)</td><td>Objective value of the <strong>best feasible integer solution</strong> found so far. This is an upper bound (for minimization).</td></tr>
+      <tr><td>\(z_{\text{LP bound}}\)</td><td>Objective value of the LP relaxation (continuous relaxation of the MIP). This is a <strong>lower bound</strong> — no integer solution can be cheaper than the LP relaxation.</td></tr>
+      <tr><td>MIP Gap = 0%</td><td>Proven optimal: the incumbent equals the bound.</td></tr>
+      <tr><td>MIP Gap = 2%</td><td>The best solution found is within 2% of the best theoretically possible. Often acceptable for practical planning.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card">
+    <div class="card-title">Practical MIP Gap Targets</div>
+    <table>
+      <thead><tr><th>Planning Context</th><th>Acceptable Gap</th><th>Rationale</th></tr></thead>
+      <tbody>
+        <tr><td>Strategic capacity plan (millions of $)</td><td>0.5–1%</td><td>High stakes; worth waiting for near-optimal</td></tr>
+        <tr><td>Quarterly procurement cycle</td><td>1–3%</td><td>Moderate stakes; solve must complete in minutes</td></tr>
+        <tr><td>Daily rebalancing / scheduling</td><td>5–10%</td><td>Frequent re-solve; speed matters more than precision</td></tr>
+        <tr><td>Real-time cluster scheduling</td><td>Heuristic only</td><td>Sub-second latency; use greedy bin packing</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--                   SECTION 2: LP EXAMPLE                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section" id="s2">
+  <div class="section-number">SECTION 2</div>
+  <h1>LP Formulation <span class="thin">— Detailed Example</span></h1>
+  <p class="lead">A continuous resource allocation model: decide how many CPU-core-months, GB-RAM-months, and GPU-months to allocate to each iCloud service across two data centers, minimizing total cost while meeting demand.</p>
+
+  <h2 id="s2-scenario">Scenario Setup</h2>
+
+  <div class="card">
+    <div class="card-title">Problem Data</div>
+    <p><strong>Services (3):</strong></p>
+    <table>
+      <thead><tr><th>Service \(s\)</th><th>CPU demand (cores)</th><th>RAM demand (GB)</th><th>GPU demand (units)</th><th>Latency region</th></tr></thead>
+      <tbody>
+        <tr><td>\(s_1\): iCloud Photos API</td><td>10,000</td><td>40,000</td><td>0</td><td>Either DC</td></tr>
+        <tr><td>\(s_2\): ML Inference</td><td>2,000</td><td>16,000</td><td>500</td><td>Either DC</td></tr>
+        <tr><td>\(s_3\): Key-Value Cache</td><td>4,000</td><td>80,000</td><td>0</td><td>Must be in DC-West (latency)</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Data Centers (2):</strong></p>
+    <table>
+      <thead><tr><th>DC \(d\)</th><th>CPU capacity</th><th>RAM capacity</th><th>GPU capacity</th><th>Cost multiplier</th></tr></thead>
+      <tbody>
+        <tr><td>\(d_1\): DC-West</td><td>12,000 cores</td><td>100,000 GB</td><td>400 GPUs</td><td>1.0× (baseline)</td></tr>
+        <tr><td>\(d_2\): DC-East</td><td>10,000 cores</td><td>60,000 GB</td><td>300 GPUs</td><td>1.15× (higher power cost)</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Unit costs (per month, at DC-West baseline):</strong> CPU = $3.50/core, RAM = $0.30/GB, GPU = $700/unit.</p>
+  </div>
+
+  <h2 id="s2-variables">Complete Variable Dictionary</h2>
+
+  <table class="var-table">
+    <thead><tr><th>Variable</th><th>Domain</th><th>Meaning</th><th>Units</th></tr></thead>
+    <tbody>
+      <tr><td>\(x_{s,d}^{\text{cpu}}\)</td><td>\(\mathbb{R}_{\geq 0}\)</td><td>CPU cores allocated to service \(s\) in DC \(d\)</td><td>cores</td></tr>
+      <tr><td>\(x_{s,d}^{\text{ram}}\)</td><td>\(\mathbb{R}_{\geq 0}\)</td><td>GB of RAM allocated to service \(s\) in DC \(d\)</td><td>GB</td></tr>
+      <tr><td>\(x_{s,d}^{\text{gpu}}\)</td><td>\(\mathbb{R}_{\geq 0}\)</td><td>GPUs allocated to service \(s\) in DC \(d\)</td><td>GPUs</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Index sets:</strong></p>
+  <table class="var-table">
+    <thead><tr><th>Set</th><th>Elements</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(\mathcal{S}\)</td><td>\(\{s_1, s_2, s_3\}\)</td><td>Set of all services</td></tr>
+      <tr><td>\(\mathcal{D}\)</td><td>\(\{d_1, d_2\}\)</td><td>Set of all data centers</td></tr>
+      <tr><td>\(\mathcal{R}\)</td><td>\(\{\text{cpu}, \text{ram}, \text{gpu}\}\)</td><td>Set of resource types</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Parameters:</strong></p>
+  <table class="var-table">
+    <thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(D_{s}^{r}\)</td><td>Total demand for resource \(r\) by service \(s\) (summed across all DCs)</td></tr>
+      <tr><td>\(K_{d}^{r}\)</td><td>Capacity of resource \(r\) at DC \(d\)</td></tr>
+      <tr><td>\(c_{d}^{r}\)</td><td>Per-unit cost of resource \(r\) at DC \(d\) per month</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="s2-formulation">Complete LP Formulation</h2>
+
+  <div class="math-block">
+    <span class="math-label">Objective — Minimize Total Monthly Cost</span>
+    $$\min \sum_{s \in \mathcal{S}} \sum_{d \in \mathcal{D}} \left( c_d^{\text{cpu}} \cdot x_{s,d}^{\text{cpu}} + c_d^{\text{ram}} \cdot x_{s,d}^{\text{ram}} + c_d^{\text{gpu}} \cdot x_{s,d}^{\text{gpu}} \right)$$
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 1 — Demand Satisfaction (for each service, each resource)</span>
+    $$\sum_{d \in \mathcal{D}} x_{s,d}^{r} \geq D_s^r \quad \forall \; s \in \mathcal{S}, \; r \in \mathcal{R}$$
+    <p style="font-size:14px; margin-top:8px;">The total allocation across all DCs must meet or exceed total demand.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 2 — DC Capacity (for each DC, each resource)</span>
+    $$\sum_{s \in \mathcal{S}} x_{s,d}^{r} \leq K_d^r \quad \forall \; d \in \mathcal{D}, \; r \in \mathcal{R}$$
+    <p style="font-size:14px; margin-top:8px;">Total allocation at a DC cannot exceed the DC's capacity for that resource.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 3 — Affinity / Latency (service \(s_3\) must be in DC-West)</span>
+    $$x_{s_3, d_2}^{r} = 0 \quad \forall \; r \in \mathcal{R}$$
+    <p style="font-size:14px; margin-top:8px;">Force all of service \(s_3\)'s allocation to DC-West by zeroing out DC-East.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 4 — Non-Negativity</span>
+    $$x_{s,d}^{r} \geq 0 \quad \forall \; s, d, r$$
+  </div>
+
+  <h2 id="s2-solve">Solving & Interpreting the LP</h2>
+
+  <div class="card success">
+    <div class="card-title">Illustrative Optimal Solution</div>
+    <table>
+      <thead><tr><th>Service</th><th>DC</th><th>CPU</th><th>RAM</th><th>GPU</th></tr></thead>
+      <tbody>
+        <tr><td>Photos API</td><td>DC-West</td><td>4,000</td><td>0</td><td>—</td></tr>
+        <tr><td>Photos API</td><td>DC-East</td><td>6,000</td><td>40,000</td><td>—</td></tr>
+        <tr><td>ML Inference</td><td>DC-West</td><td>2,000</td><td>16,000</td><td>400</td></tr>
+        <tr><td>ML Inference</td><td>DC-East</td><td>0</td><td>0</td><td>100</td></tr>
+        <tr><td>KV Cache</td><td>DC-West</td><td>4,000</td><td>80,000</td><td>—</td></tr>
+        <tr><td>KV Cache</td><td>DC-East</td><td>0</td><td>0</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Total cost:</strong> $349,700/month. The optimizer pushes CPU-heavy work to DC-East (more capacity available) while keeping latency-sensitive KV Cache entirely in DC-West. GPU allocation maxes out DC-West (400/400 = binding) then spills to DC-East.</p>
+  </div>
+
+  <h2 id="s2-duals">Dual Analysis & Shadow Prices</h2>
+
+  <div class="card">
+    <div class="card-title">Shadow Prices from the Dual Solution</div>
+    <table>
+      <thead><tr><th>Constraint</th><th>Shadow Price \(\lambda^*\)</th><th>Binding?</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td>GPU capacity at DC-West (\(\leq 400\))</td><td>$185/GPU-month</td><td>Yes</td><td>Each additional GPU at DC-West saves $185/month (avoids spilling to pricier DC-East)</td></tr>
+        <tr><td>RAM capacity at DC-West (\(\leq 100{,}000\))</td><td>$0.04/GB-month</td><td>Yes (96,000 used)</td><td>DC-West RAM is nearly full; marginal GB has slight value</td></tr>
+        <tr><td>CPU capacity at DC-East (\(\leq 10{,}000\))</td><td>$0</td><td>No (6,000 used)</td><td>DC-East CPU has 4,000 cores slack — adding more has zero value</td></tr>
+        <tr><td>GPU capacity at DC-East (\(\leq 300\))</td><td>$0</td><td>No (100 used)</td><td>200 GPUs idle at DC-East</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">From LP Shadow Prices to Investment Decisions</div>
+    <p>The GPU shadow price at DC-West ($185/GPU-month) tells the capacity team: "if you can add GPU capacity at DC-West for less than $185/GPU-month, it is cost-justified." If a new GPU node costs $680/GPU-month (from the cost model), it's <strong>not</strong> worth it — the shadow price says the marginal value is only $185 because the optimizer can already route overflow to DC-East at modest extra cost. But if DC-East were also binding, the shadow price would jump dramatically.</p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--                   SECTION 3: MIP EXAMPLE                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section" id="s3">
+  <div class="section-number">SECTION 3</div>
+  <h1>MIP Formulation <span class="thin">— Detailed Example</span></h1>
+  <p class="lead">A procurement model: decide how many servers of each type to buy for each data center and how to assign service workloads to them, minimizing total cost while satisfying all demand and budget constraints. The key difference from LP: <strong>you must buy whole servers</strong>.</p>
+
+  <h2 id="s3-scenario">Scenario Setup</h2>
+
+  <div class="card">
+    <div class="card-title">Problem Data</div>
+    <p><strong>Node types (catalog):</strong></p>
+    <table>
+      <thead><tr><th>Node type \(n\)</th><th>CPU cores \(a_n^{\text{cpu}}\)</th><th>RAM GB \(a_n^{\text{ram}}\)</th><th>GPUs \(a_n^{\text{gpu}}\)</th><th>Power kW \(P_n\)</th><th>Monthly cost \(c_n\)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag blue">Compute-L</span></td><td>192</td><td>1,024</td><td>0</td><td>0.7</td><td>$870</td></tr>
+        <tr><td><span class="tag green">Memory-XL</span></td><td>96</td><td>2,048</td><td>0</td><td>0.6</td><td>$1,050</td></tr>
+        <tr><td><span class="tag red">GPU-Train</span></td><td>128</td><td>2,048</td><td>8</td><td>10.0</td><td>$6,200</td></tr>
+        <tr><td><span class="tag purple">GPU-Infer</span></td><td>64</td><td>512</td><td>4</td><td>2.5</td><td>$1,350</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Service demands (same as LP scenario):</strong> Photos API (10K cores, 40K GB), ML Inference (2K cores, 16K GB, 500 GPUs), KV Cache (4K cores, 80K GB).</p>
+    <p><strong>Additional constraints:</strong> Budget cap \(B = \$500{,}000\)/month. DC-West power limit \(W_1 = 2{,}000\) kW. DC-East power limit \(W_2 = 1{,}500\) kW.</p>
+  </div>
+
+  <h2 id="s3-variables">Complete Variable Dictionary</h2>
+
+  <table class="var-table">
+    <thead><tr><th>Variable</th><th>Domain</th><th>Meaning</th><th>Units</th></tr></thead>
+    <tbody>
+      <tr><td>\(x_{n,d} \in \mathbb{Z}_{\geq 0}\)</td><td>Non-negative integer</td><td>Number of nodes of type \(n\) to deploy at DC \(d\)</td><td>Whole servers</td></tr>
+      <tr><td>\(y_{s,d} \in \mathbb{R}_{\geq 0}\)</td><td>Non-negative real</td><td>Fraction (or count) of service \(s\) demand served from DC \(d\)</td><td>Fraction of total demand</td></tr>
+      <tr><td>\(u_s \in \mathbb{R}_{\geq 0}\)</td><td>Non-negative real</td><td>Unmet demand for service \(s\) (penalty variable)</td><td>Same units as demand</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Parameters:</strong></p>
+  <table class="var-table">
+    <thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(\mathcal{N}\) = {Compute-L, Memory-XL, GPU-Train, GPU-Infer}</td><td>Set of node types in the catalog</td></tr>
+      <tr><td>\(\mathcal{D}\) = {DC-West, DC-East}</td><td>Set of data centers</td></tr>
+      <tr><td>\(\mathcal{S}\) = {Photos, ML-Infer, KV-Cache}</td><td>Set of services</td></tr>
+      <tr><td>\(a_n^r\)</td><td>Amount of resource \(r\) provided by one node of type \(n\)</td></tr>
+      <tr><td>\(D_s^r\)</td><td>Total demand for resource \(r\) by service \(s\)</td></tr>
+      <tr><td>\(c_n\)</td><td>Total monthly cost (amortized CAPEX + OPEX) of one node of type \(n\)</td></tr>
+      <tr><td>\(M_s\)</td><td>Penalty cost per unit of unmet demand for service \(s\)</td></tr>
+      <tr><td>\(P_n\)</td><td>Power draw (kW) of one node of type \(n\)</td></tr>
+      <tr><td>\(W_d\)</td><td>Maximum power capacity (kW) at DC \(d\)</td></tr>
+      <tr><td>\(B\)</td><td>Total monthly budget cap</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="s3-formulation">Complete MIP Formulation</h2>
+
+  <div class="math-block">
+    <span class="math-label">Objective — Minimize Total Cost + Penalties</span>
+    $$\min \underbrace{\sum_{n \in \mathcal{N}} \sum_{d \in \mathcal{D}} c_n \cdot x_{n,d}}_{\text{Node procurement cost}} \;+\; \underbrace{\sum_{s \in \mathcal{S}} M_s \cdot u_s}_{\text{Unmet demand penalty}}$$
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 1 — Resource Sufficiency (for each resource, each DC)</span>
+    $$\sum_{n \in \mathcal{N}} a_n^r \cdot x_{n,d} \;\geq\; \sum_{s \in \mathcal{S}} D_s^r \cdot y_{s,d} \quad \forall \; r \in \mathcal{R}, \; d \in \mathcal{D}$$
+    <p style="font-size:14px; margin-top:8px;">Total resource provided by all nodes at DC \(d\) must cover the demand assigned there.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 2 — Demand Coverage (for each service)</span>
+    $$\sum_{d \in \mathcal{D}} y_{s,d} + u_s \geq 1 \quad \forall \; s \in \mathcal{S}$$
+    <p style="font-size:14px; margin-top:8px;">The fraction of service \(s\)'s demand served across all DCs, plus unmet fraction, must be at least 1 (100%). If \(u_s > 0\), some demand is unmet and incurs the penalty.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 3 — Power Capacity (for each DC)</span>
+    $$\sum_{n \in \mathcal{N}} P_n \cdot x_{n,d} \leq W_d \quad \forall \; d \in \mathcal{D}$$
+    <p style="font-size:14px; margin-top:8px;">Total power draw of all nodes at DC \(d\) must not exceed the facility's power envelope.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 4 — Budget</span>
+    $$\sum_{n \in \mathcal{N}} \sum_{d \in \mathcal{D}} c_n \cdot x_{n,d} \leq B$$
+    <p style="font-size:14px; margin-top:8px;">Total monthly infrastructure spend cannot exceed the budget.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 5 — Affinity (KV Cache pinned to DC-West)</span>
+    $$y_{s_3, d_2} = 0$$
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 6 — Integrality &amp; Non-Negativity</span>
+    $$x_{n,d} \in \mathbb{Z}_{\geq 0} \quad \forall \; n, d$$
+    $$y_{s,d} \geq 0, \quad u_s \geq 0 \quad \forall \; s, d$$
+  </div>
+
+  <h2 id="s3-solve">Solving & MIP Gap</h2>
+
+  <div class="card success">
+    <div class="card-title">Illustrative Solution</div>
+    <table>
+      <thead><tr><th>Node Type</th><th>DC-West</th><th>DC-East</th><th>Total Nodes</th><th>Monthly Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Compute-L</td><td>18</td><td>25</td><td>43</td><td>$37,410</td></tr>
+        <tr><td>Memory-XL</td><td>35</td><td>5</td><td>40</td><td>$42,000</td></tr>
+        <tr><td>GPU-Train</td><td>15</td><td>10</td><td>25</td><td>$155,000</td></tr>
+        <tr><td>GPU-Infer</td><td>30</td><td>35</td><td>65</td><td>$87,750</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Total node cost:</strong> $322,160/month (well within $500K budget).</p>
+    <p><strong>All demand met:</strong> \(u_s = 0 \; \forall s\).</p>
+    <p><strong>MIP Gap:</strong> 0.8% (solver terminated after 45 seconds; proven within 0.8% of LP lower bound).</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Interpreting the MIP Gap</div>
+    <p><strong>LP relaxation bound:</strong> $319,580/month (the best possible if fractional servers were allowed).</p>
+    <p><strong>Best integer solution:</strong> $322,160/month.</p>
+    <p><strong>MIP Gap:</strong> \(\frac{322{,}160 - 319{,}580}{322{,}160} = 0.80\%\).</p>
+    <p>This means the "integrality penalty" — the extra cost of buying whole servers vs. the theoretical fractional optimum — is about $2,580/month (0.8%). This is very tight; the solution is essentially optimal for practical purposes.</p>
+  </div>
+
+  <h2 id="s3-sensitivity">Sensitivity Analysis</h2>
+
+  <div class="collapsible">
+    <div class="collapsible-header">What happens if the budget is reduced to $300K?</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>The budget constraint becomes binding. The optimizer must shed some demand (\(u_s > 0\)). Given the penalty structure, it will first reduce allocation for the lowest-tier service. If ML Inference batch jobs have \(M_s = \$5{,}000\), the optimizer might leave 50 GPUs worth of inference demand unmet, saving $87,750 in GPU-Infer nodes at a penalty cost of $250,000 in unmet demand — which still exceeds savings. More likely, it switches to fewer GPU-Train nodes (expensive) and packs more onto GPU-Infer. The shadow price on the budget constraint tells you exactly how much one extra dollar of budget is worth.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">What happens if GPU-Train node cost drops by 20%?</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>GPU-Train monthly cost drops from $6,200 to $4,960. The optimizer will likely substitute some GPU-Infer nodes with GPU-Train nodes, because each GPU-Train node provides 8 GPUs vs. 4 for GPU-Infer — the per-GPU cost of GPU-Train is now \(\$4{,}960/8 = \$620\) vs. \(\$1{,}350/4 = \$337.50\) for GPU-Infer. Wait — GPU-Infer is still cheaper per GPU, so the optimizer might not change much. However, GPU-Train also provides more CPU and RAM, so if those resources are binding, the optimizer might prefer GPU-Train for its "free" CPU/RAM. This illustrates why you need the solver — human intuition fails with multi-dimensional trade-offs.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Cost Coefficient Ranging: How stable is the Compute-L selection?</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Cost coefficient ranging asks: "Over what range of \(c_{\text{Compute-L}}\) does the current basis remain optimal?" Suppose the range is $700–$1,100/month. Since the current cost is $870, there's a $230 upward margin before the optimizer would switch to an alternative (perhaps Memory-XL, which provides more RAM per server at slightly higher cost). This gives confidence the plan is robust to moderate vendor price negotiations or hardware cost fluctuations.</p>
+    </div></div>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">MIP vs. LP — The Integrality Story</div>
+    <p>The LP relaxation says "buy 42.3 Compute-L nodes." The MIP rounds this to 43 (ceiling) or finds a better combination by shifting resources to other node types. The 0.8% MIP gap represents the "cost of indivisibility." For strategic planning, you can often use the LP relaxation alone (faster, exact duals). For procurement, you need the MIP because purchase orders are for whole servers.</p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--                 SECTION 4: BIN PACKING EXAMPLE                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section" id="s4">
+  <div class="section-number">SECTION 4</div>
+  <h1>Bin Packing <span class="thin">— Detailed Example</span></h1>
+  <p class="lead">Given a fleet of servers (already procured), assign individual service instances to specific machines. This is the operational scheduling problem that runs daily or in real-time. The goal: pack workloads onto the fewest machines possible (or maximize utilization).</p>
+
+  <h2 id="s4-scenario">Scenario Setup</h2>
+
+  <div class="card">
+    <div class="card-title">Problem Data — Single-Dimension (CPU) Example First</div>
+    <p><strong>Available servers (bins):</strong> 5 identical Compute-L machines, each with \(C = 192\) CPU cores.</p>
+    <p><strong>Service instances (items) to place:</strong></p>
+    <table>
+      <thead><tr><th>Instance \(i\)</th><th>Service</th><th>CPU requirement \(w_i\)</th></tr></thead>
+      <tbody>
+        <tr><td>1–20</td><td>Photos API (20 replicas)</td><td>24 cores each</td></tr>
+        <tr><td>21–30</td><td>KV Cache (10 replicas)</td><td>48 cores each</td></tr>
+        <tr><td>31–38</td><td>ML Inference (8 replicas)</td><td>16 cores each</td></tr>
+        <tr><td>39–42</td><td>Batch Analytics (4 replicas)</td><td>64 cores each</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Total CPU demand:</strong> 20×24 + 10×48 + 8×16 + 4×64 = 480 + 480 + 128 + 256 = <strong>1,344 cores</strong>.</p>
+    <p><strong>Total capacity:</strong> 5 × 192 = <strong>960 cores</strong>. Not enough! We need at least \(\lceil 1344/192 \rceil = 7\) servers. Assume we actually have <strong>8 servers</strong> available (some buffer).</p>
+  </div>
+
+  <h2 id="s4-variables">Complete Variable Dictionary</h2>
+
+  <table class="var-table">
+    <thead><tr><th>Variable</th><th>Domain</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(x_{ij} \in \{0,1\}\)</td><td>Binary</td><td>1 if instance \(i\) is assigned to server \(j\); 0 otherwise</td></tr>
+      <tr><td>\(z_j \in \{0,1\}\)</td><td>Binary</td><td>1 if server \(j\) is used (has at least one instance); 0 if empty</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Parameters:</strong></p>
+  <table class="var-table">
+    <thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(n = 42\)</td><td>Total number of instances (items) to place</td></tr>
+      <tr><td>\(m = 8\)</td><td>Total number of available servers (bins)</td></tr>
+      <tr><td>\(w_i\)</td><td>CPU cores required by instance \(i\) (item size)</td></tr>
+      <tr><td>\(C = 192\)</td><td>CPU core capacity of each server (bin capacity)</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="s4-formulation">Complete Bin Packing Formulation</h2>
+
+  <div class="math-block">
+    <span class="math-label">Objective — Minimize Number of Servers Used</span>
+    $$\min \sum_{j=1}^{m} z_j$$
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 1 — Capacity (each server's load ≤ capacity)</span>
+    $$\sum_{i=1}^{n} w_i \cdot x_{ij} \leq C \cdot z_j \quad \forall \; j = 1, \ldots, m$$
+    <p style="font-size:14px; margin-top:8px;">If \(z_j = 0\) (server not used), the RHS is 0, forcing all \(x_{ij} = 0\) for that server. If \(z_j = 1\), total load ≤ \(C = 192\).</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 2 — Assignment (each instance goes to exactly one server)</span>
+    $$\sum_{j=1}^{m} x_{ij} = 1 \quad \forall \; i = 1, \ldots, n$$
+    <p style="font-size:14px; margin-top:8px;">Every instance must be placed on exactly one server. No splitting.</p>
+  </div>
+
+  <div class="math-block">
+    <span class="math-label">Constraint 3 — Binary</span>
+    $$x_{ij} \in \{0,1\}, \quad z_j \in \{0,1\}$$
+  </div>
+
+  <div class="card success">
+    <div class="card-title">Optimal Packing for This Example</div>
+    <div class="diagram">
+Server 1 (192 cores):  [Photos×4 = 96] + [KV×2 = 96]           = 192  ✓ FULL
+Server 2 (192 cores):  [Photos×4 = 96] + [KV×2 = 96]           = 192  ✓ FULL
+Server 3 (192 cores):  [Photos×4 = 96] + [KV×2 = 96]           = 192  ✓ FULL
+Server 4 (192 cores):  [Photos×4 = 96] + [KV×2 = 96]           = 192  ✓ FULL
+Server 5 (192 cores):  [Photos×4 = 96] + [KV×2 = 96]           = 192  ✓ FULL
+Server 6 (192 cores):  [ML-Inf×8 = 128] + [Batch×1 = 64]       = 192  ✓ FULL
+Server 7 (192 cores):  [Batch×3 = 192]                          = 192  ✓ FULL
+Server 8 (192 cores):  — not used —                              =   0  ✗ EMPTY
+                                                          ─────────────────────
+Servers used: 7 of 8.    Total utilization: 1,344/1,344 = 100% on used servers.</div>
+    <p>The optimal solution uses <strong>7 servers</strong>, matching the theoretical lower bound \(\lceil 1344/192 \rceil = 7\). Server 8 remains idle — it can be powered down to save OPEX.</p>
+  </div>
+
+  <h2 id="s4-heuristics">Heuristics for Large-Scale Bin Packing</h2>
+  <p>Exact bin packing (solving the BIP above) is NP-hard and impractical for 100K+ instances. Instead, production schedulers use <strong>polynomial-time heuristics</strong>:</p>
+
+  <table>
+    <thead><tr><th>Heuristic</th><th>Approach</th><th>Approximation Ratio</th><th>Time</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>First Fit Decreasing (FFD)</strong></td>
+        <td>Sort items by size (largest first). Place each item in the first bin that has enough room. Open a new bin if none fit.</td>
+        <td>\(\leq \frac{11}{9} \text{OPT} + \frac{6}{9}\)</td>
+        <td>O(n log n)</td>
+      </tr>
+      <tr>
+        <td><strong>Best Fit Decreasing (BFD)</strong></td>
+        <td>Sort items largest first. Place each in the bin with the <em>least</em> remaining room that still fits. Minimizes wasted space per bin.</td>
+        <td>Same as FFD asymptotically</td>
+        <td>O(n log n)</td>
+      </tr>
+      <tr>
+        <td><strong>First Fit (FF)</strong></td>
+        <td>Process items in arrival order (no sort). Place in first available bin.</td>
+        <td>\(\leq \frac{17}{10} \text{OPT} + \frac{7}{10}\)</td>
+        <td>O(n log n)</td>
+      </tr>
+      <tr>
+        <td><strong>Next Fit (NF)</strong></td>
+        <td>Only try the current bin. If it doesn't fit, close it and open a new one.</td>
+        <td>\(\leq 2 \cdot \text{OPT}\)</td>
+        <td>O(n)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card accent">
+    <div class="card-title">Why FFD Dominates in Practice</div>
+    <p>First Fit Decreasing is the workhorse of production schedulers (Kubernetes, Borg, etc.). By placing large items first, it avoids the "small items fill bins, then a large item can't fit anywhere" pathology. The \(11/9\) approximation means it uses at most ~22% more bins than optimal — and in practice, it's usually within 1–5% of optimal. It runs in O(n log n) time, making it suitable for real-time scheduling of millions of containers.</p>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Worked Example: FFD on Our Problem</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p><strong>Step 1: Sort items by size (descending):</strong></p>
+      <p>64, 64, 64, 64, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 16, 16, 16, 16, 16, 16, 16, 16</p>
+      <p><strong>Step 2: Place items one by one:</strong></p>
+      <ul>
+        <li>Batch(64) → Bin 1 [64/192]</li>
+        <li>Batch(64) → Bin 1 [128/192]</li>
+        <li>Batch(64) → Bin 1 [192/192] FULL</li>
+        <li>Batch(64) → Bin 2 [64/192]</li>
+        <li>KV(48) → Bin 2 [112/192]</li>
+        <li>KV(48) → Bin 2 [160/192]</li>
+        <li>... (continues placing KV into bins, then Photos, then ML-Infer into gaps)</li>
+      </ul>
+      <p><strong>FFD result: 7 bins</strong> — matches the exact optimal! This is common for well-structured instances.</p>
+    </div></div>
+  </div>
+
+  <h2 id="s4-multi">Multi-Dimensional (Vector) Bin Packing</h2>
+  <p>Real capacity planning involves multiple resource dimensions simultaneously. An instance needs CPU <em>and</em> RAM <em>and</em> possibly GPU <em>and</em> network bandwidth. The formulation extends naturally:</p>
+
+  <div class="math-block">
+    <span class="math-label">Multi-Dimensional Bin Packing</span>
+    $$\min \sum_{j=1}^{m} z_j$$
+    $$\text{s.t.} \quad \sum_{i=1}^{n} w_i^r \cdot x_{ij} \leq C_j^r \cdot z_j \quad \forall \; j, \; \forall \; r \in \mathcal{R}$$
+    $$\sum_{j=1}^{m} x_{ij} = 1 \quad \forall \; i$$
+    $$x_{ij} \in \{0,1\}, \quad z_j \in \{0,1\}$$
+  </div>
+
+  <table class="var-table">
+    <thead><tr><th>New Symbol</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>\(w_i^r\)</td><td>Requirement of instance \(i\) for resource \(r\) (e.g., \(w_5^{\text{ram}} = 64\) GB)</td></tr>
+      <tr><td>\(C_j^r\)</td><td>Capacity of server \(j\) for resource \(r\) (servers may be heterogeneous)</td></tr>
+      <tr><td>\(\mathcal{R}\)</td><td>Set of resource dimensions: {cpu, ram, gpu, storage, network}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card warning">
+    <div class="card-title">Multi-Dimensional Complexity</div>
+    <p>Vector bin packing is <strong>much harder</strong> than 1-D. The FFD heuristic no longer has a bounded approximation ratio — in the worst case, it can use \(\Omega(d)\) times the optimal number of bins, where \(d\) is the number of dimensions. In practice, the <strong>dominant resource</strong> heuristic helps: sort items by their largest relative dimension (e.g., if an item uses 50% of a server's RAM but only 10% of CPU, RAM is dominant). Place items by dominant resource first, then fit smaller dimensions greedily.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Multi-Dimensional Example</div>
+    <table>
+      <thead><tr><th>Instance</th><th>CPU (cores)</th><th>RAM (GB)</th><th>Dominant Resource</th></tr></thead>
+      <tbody>
+        <tr><td>KV Cache replica</td><td>48 (25% of 192)</td><td>512 (50% of 1,024)</td><td><span class="tag orange">RAM</span></td></tr>
+        <tr><td>Photos API replica</td><td>24 (12.5%)</td><td>64 (6.25%)</td><td><span class="tag blue">CPU</span> (both low, roughly balanced)</td></tr>
+        <tr><td>ML Inference replica</td><td>16 (8.3%)</td><td>128 (12.5%)</td><td><span class="tag orange">RAM</span></td></tr>
+        <tr><td>Batch Analytics</td><td>64 (33.3%)</td><td>32 (3.1%)</td><td><span class="tag blue">CPU</span></td></tr>
+      </tbody>
+    </table>
+    <p>A server can fit 2 KV Cache replicas (96 cores, 1,024 GB RAM — RAM is exactly full). Adding even one Photos API replica would overflow RAM (1,024 + 64 = 1,088 > 1,024). So in 2-D packing, the number of bins needed is driven by the <strong>tightest dimension</strong>, and utilization on other dimensions suffers — this is the stranding problem from Section 4 of the Cost Modeling document.</p>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Anti-Affinity and Spread Constraints in Bin Packing</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Production schedulers add constraints beyond simple capacity:</p>
+      <ul>
+        <li><strong>Anti-affinity:</strong> No two replicas of the same service on the same server (for fault tolerance). Adds: \(x_{i_1, j} + x_{i_2, j} \leq 1\) for replicas \(i_1, i_2\) of the same service.</li>
+        <li><strong>Spread:</strong> Replicas must be spread across racks/failure domains. Adds: at most \(k\) replicas per rack.</li>
+        <li><strong>Affinity:</strong> Certain pairs of services should co-locate (low-latency communication). Adds: \(x_{i_1, j} = x_{i_2, j}\) for paired instances.</li>
+        <li><strong>Preemption priority:</strong> High-priority services can evict lower-priority ones. Modeled with multiple rounds of packing or priority-ordered assignment.</li>
+      </ul>
+      <p>Each constraint makes the bin packing harder to solve but more operationally realistic.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Relationship Between MIP Procurement and Bin Packing Placement</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <div class="diagram">
+MIP PROCUREMENT (Section 3)              BIN PACKING PLACEMENT (Section 4)
+══════════════════════                    ═══════════════════════════════
+Input: Service demand forecasts           Input: Actual fleet (from MIP)
+       Node catalog + costs                      Live instance requests
+       Budget / power limits                     Anti-affinity rules
+
+Output: Buy 43 Compute-L,                Output: Place instance X on
+        40 Memory-XL,                             Server #247 in
+        25 GPU-Train, ...                          Rack 12, DC-West
+
+Frequency: Quarterly                      Frequency: Real-time / hourly
+Formulation: MIP (integer servers)        Formulation: Bin Packing (binary)
+Solver: Gurobi / CPLEX (minutes)          Solver: FFD heuristic (ms)</div>
+      <p>The MIP decides the <em>fleet composition</em>. Bin packing decides the <em>instance-to-server mapping</em> within that fleet. If the MIP solution has high stranding, bin packing will show it as low utilization — feedback to revise the node catalog or demand forecast.</p>
+    </div></div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--                    INTERVIEW Q&A                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section" id="s5">
+  <div class="section-number">INTERVIEW PREP</div>
+  <h1>Interview Q&A</h1>
+  <p class="lead">Six practice questions covering LP, MIP, and bin packing in the context of iCloud capacity planning.</p>
+
+  <div class="qa">
+    <div class="qa-question">Q1: When would you use an LP instead of a MIP for capacity planning?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>I'd use an LP in three situations. First, for <strong>strategic sizing</strong> at a 6–24 month horizon where the question is "how much total CPU, RAM, and GPU capacity do we need across regions?" — at this granularity, fractional values are meaningful because they represent large quantities where rounding error is negligible (if the LP says 10,437.3 cores, buying 10,438 is fine). Second, to obtain <strong>exact shadow prices</strong>: LP duality gives mathematically rigorous marginal resource values that tell us which constraints are binding and what each additional unit of capacity is worth. MIP doesn't provide exact duals. Third, as a <strong>warm start</strong> for the MIP: solving the LP relaxation first gives a lower bound and a good initial solution for branch-and-bound, often reducing MIP solve time by 50% or more.</p>
+      <p>I'd switch to MIP when the decisions are inherently discrete — buying whole servers, adding racks, or enabling/disabling data center pods — because the LP relaxation can be misleading when integer effects are large (e.g., buying 0.3 of a $300K GPU node is not meaningful).</p>
+
+      <div class="followup">
+        <div class="followup-q">Follow-up: Can you ever use the LP solution directly for procurement?</div>
+        <div class="followup-a">Yes, if the quantities are large enough that rounding has negligible cost impact. If the LP says "buy 847.2 Compute-L nodes" and you round to 848, the cost error is one server (~$870/month on a $700K total — 0.1%). But if the LP says "buy 2.7 GPU-Train nodes," rounding to 3 adds $6,200/month on a small base. The rule of thumb: if LP variables are consistently > 50 units, rounding is fine; below 10, you need the MIP for meaningful precision.</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q2: Explain shadow prices and how you'd use them to prioritize infrastructure investments.</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>Shadow prices (dual variables from the LP) quantify the marginal value of relaxing each constraint by one unit. In capacity planning terms, they answer: "if we had one more GPU / GB of RAM / MW of power, how much would the total system cost decrease?"</p>
+      <p>Here's how I'd use them. Suppose our LP gives these shadow prices: GPU at DC-West = $800/GPU-month, RAM at DC-West = $0.45/GB-month, CPU everywhere = $0/core-month, Power at DC-West = $75,000/MW-month. This tells me: (1) CPU is not a bottleneck — we have slack, so spending on compute nodes is wasteful. (2) RAM is moderately valuable — every GB freed up saves $0.45/month, so optimizing service memory footprints has measurable ROI. (3) GPUs are extremely scarce — at $800/GPU-month, any project that reduces GPU usage by even 10 GPUs saves $8K/month. (4) Power at DC-West is a hard ceiling — the $75K/MW shadow price means a 1 MW expansion justified by $75K/month in cost savings is equivalent to $900K/year. If the expansion costs less than that annualized, do it.</p>
+      <p>I'd present these shadow prices to the finance team as the basis for the next budget cycle: rank investment proposals by their shadow-price-implied ROI.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q3: What is the MIP gap, and how do you decide when to stop the solver?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>The MIP gap is \(\frac{z_{\text{best feasible}} - z_{\text{LP bound}}}{z_{\text{best feasible}}} \times 100\%\), where \(z_{\text{best feasible}}\) is the objective value of the best integer solution found so far and \(z_{\text{LP bound}}\) is the LP relaxation's optimal value (a lower bound for minimization). A gap of 0% means proven optimal; a gap of 2% means the solution might be up to 2% worse than optimal.</p>
+      <p>I'd set the termination criteria based on the decision stakes. For an annual $50M capacity plan, 1% gap = $500K uncertainty — worth waiting hours for a tighter solution. For a weekly rebalancing of a $200K/month cluster, 5% gap = $10K — not worth more than a few minutes of solver time. I also set a wall-clock time limit (e.g., 30 minutes) as a hard stop, because solver convergence often follows a pattern: rapid improvement in the first few minutes, then diminishing returns. If after 30 minutes the gap is 3% and hasn't improved in the last 10 minutes, the current incumbent is effectively as good as we'll get without structural reformulation.</p>
+
+      <div class="followup">
+        <div class="followup-q">Follow-up: What if the MIP gap is stuck at 15%?</div>
+        <div class="followup-a">A large gap usually means the LP relaxation bound is weak — the continuous relaxation is too loose an approximation of the integer problem. I'd try: (1) adding cutting planes (Gomory cuts, knapsack covers) to tighten the relaxation, (2) reformulating with better branching priorities (branch on the most fractional variables first), (3) providing a warm-start solution from a heuristic (e.g., FFD bin packing), (4) decomposing the problem (e.g., Benders decomposition by DC, solving each DC sub-problem separately then coordinating). If none of these work within the time budget, I'd fall back to the heuristic solution and accept the gap, documenting the uncertainty for the planning team.</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q4: How does bin packing relate to the MIP procurement model in a capacity planning pipeline?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>They operate at different time scales and granularities in a two-stage pipeline. The MIP runs quarterly or monthly to decide the <strong>fleet composition</strong>: how many of each server type to buy and deploy at each data center. Its decision variables are integer counts of servers. The bin packing runs continuously (real-time or hourly) to decide the <strong>workload placement</strong>: which specific service instances go on which specific machines. Its variables are binary assignments.</p>
+      <p>The connection is that the MIP's output (the purchased fleet) becomes the bin packing's input (available bins). If the MIP solution has high resource stranding — say, it bought enough RAM but has 30% excess CPU — the bin packing will confirm this by showing low CPU utilization across the fleet. This utilization feedback is then used in the next MIP solve cycle to adjust the node mix (perhaps fewer Compute-L nodes, more Memory-XL).</p>
+      <p>There's also a feasibility check: the MIP assumes workloads can be packed onto the purchased servers. But the MIP doesn't model instance-level placement constraints (anti-affinity, rack spread). It's possible (though rare) for a MIP-optimal fleet to have packing issues if, say, anti-affinity rules prevent placing all replicas even though aggregate capacity suffices. Running a bin packing simulation post-MIP catches this before hardware is ordered.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q5: Walk me through how penalty variables enable service tiering in the optimization.</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>The idea is to convert hard demand constraints into soft constraints using slack variables with different costs. For each service \(s\), instead of the hard constraint \(\sum_d y_{s,d} \geq 1\) (100% of demand must be met), we write \(\sum_d y_{s,d} + u_s \geq 1\) where \(u_s \geq 0\) is the unmet fraction. We then add \(M_s \cdot u_s\) to the objective, where \(M_s\) is the penalty cost per unit of unmet demand.</p>
+      <p>For iCloud, I'd tier services like this. Tier-0 (authentication, iCloud Drive sync): \(M = \$500{,}000\)/unit — effectively infinite; the optimizer will buy any amount of hardware before shedding this. Tier-1 (Photos, Mail): \(M = \$50{,}000\)/unit — very expensive to leave unmet, but the optimizer can shed small amounts under extreme budget pressure. Tier-2 (analytics, offline ML training): \(M = \$2{,}000\)/unit — the optimizer will shed these first when budget is tight.</p>
+      <p>Under a budget crunch, the optimizer gracefully degrades: it meets all Tier-0 demand, meets most Tier-1, and sheds Tier-2 until the budget constraint is satisfied. The penalty costs encode the business priority ordering without requiring manual intervention. And the shadow price on the budget constraint tells you exactly how much one more dollar of budget is worth in terms of prevented demand shedding.</p>
+
+      <div class="followup">
+        <div class="followup-q">Follow-up: How do you set the penalty values?</div>
+        <div class="followup-a">In practice, penalty values come from two sources. First, business impact estimates: if 1% of iCloud Auth is unavailable for a month, what is the revenue/brand impact? Convert that to $/unit-month. Second, iterative tuning: set initial values, run the optimizer, check if the shedding behavior matches business expectations (e.g., "analytics should be shed before photos"), adjust penalties until the ordering is correct. The absolute values matter less than the relative ordering — what matters is \(M_{\text{Tier-0}} \gg M_{\text{Tier-1}} \gg M_{\text{Tier-2}}\). A common heuristic is 10× between tiers.</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q6: Describe the First Fit Decreasing heuristic and why it works well for cluster scheduling.</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>First Fit Decreasing (FFD) is a greedy bin packing heuristic with two steps. First, sort all items (service instances) by size in decreasing order. Second, for each item, scan the bins (servers) in order and place the item in the <strong>first</strong> bin with enough remaining capacity. If no existing bin fits, open a new one.</p>
+      <p>It works well for several reasons. The decreasing sort ensures large items are placed first, when bins are empty and have the most room. This prevents the pathology where small items fill bins to near-capacity, and then a large item arrives that doesn't fit anywhere — forcing an unnecessary new bin. The theoretical guarantee is \(\text{FFD}(I) \leq \frac{11}{9} \text{OPT}(I) + \frac{6}{9}\), meaning it never uses more than about 22% extra bins. In practice, it's almost always within 1–5% of optimal for real workload distributions.</p>
+      <p>For cluster scheduling at iCloud scale (millions of containers), FFD's O(n log n) time complexity is critical. An exact MIP solution would take hours for millions of instances; FFD solves it in seconds. The trade-off (potentially a few extra servers) is acceptable because servers are already purchased — the packing decision is about utilization, not procurement cost. And in Kubernetes-style schedulers, the "bins" are periodically rebalanced, so any FFD sub-optimality is corrected over time.</p>
+
+      <div class="followup">
+        <div class="followup-q">Follow-up: How does this extend to multiple dimensions?</div>
+        <div class="followup-a">In multi-dimensional bin packing (CPU + RAM + GPU), FFD's guarantee no longer holds because you can't sort items by a single "size." The common approach is Dominant Resource FFD: for each item, compute its largest relative consumption across dimensions (e.g., an item using 50% of a server's RAM and 10% of CPU has RAM as its dominant resource). Sort items by dominant resource consumption descending, then apply FFD. Another approach is scoring: define a scalar score like \(\text{score}_i = \max_r(w_i^r / C^r)\) and sort by that. Google's Borg scheduler uses a variant of this with multi-factor scoring that includes memory, CPU, and anti-affinity penalties.</div>
+      </div>
+    </div></div>
+  </div>
+
+  <hr>
+  <div class="divider">Quick Reference</div>
+
+  <div class="card">
+    <div class="card-title">Formulation Decision Cheat Sheet</div>
+    <table>
+      <thead><tr><th>Question</th><th>Use</th><th>Key Reason</th></tr></thead>
+      <tbody>
+        <tr><td>How much total capacity do we need?</td><td><span class="tag blue">LP</span></td><td>Continuous, fast, exact duals</td></tr>
+        <tr><td>How many of each server type to buy?</td><td><span class="tag red">MIP</span></td><td>Integer servers, budget constraints</td></tr>
+        <tr><td>Which instances go on which machines?</td><td><span class="tag green">Bin Packing</span></td><td>Binary assignment, real-time speed</td></tr>
+        <tr><td>What is each resource worth at the margin?</td><td><span class="tag blue">LP</span> duals</td><td>Shadow prices from strong duality</td></tr>
+        <tr><td>How close to optimal is our solution?</td><td><span class="tag red">MIP</span> gap</td><td>LP bound vs. best integer incumbent</td></tr>
+        <tr><td>Should we shed demand under budget pressure?</td><td><span class="tag red">MIP</span> + penalties</td><td>Soft constraints with tiered costs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Symbol Master Reference</div>
+    <table>
+      <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>\(\mathbf{x}, y_{s,d}\)</td><td>Continuous decision variables (resource allocation, demand fraction)</td></tr>
+        <tr><td>\(x_{n,d} \in \mathbb{Z}\)</td><td>Integer decision variable (number of nodes to buy)</td></tr>
+        <tr><td>\(x_{ij} \in \{0,1\}\)</td><td>Binary assignment variable (item \(i\) on bin \(j\))</td></tr>
+        <tr><td>\(z_j \in \{0,1\}\)</td><td>Binary indicator (bin \(j\) is used)</td></tr>
+        <tr><td>\(u_s\)</td><td>Penalty/slack variable (unmet demand)</td></tr>
+        <tr><td>\(\lambda_i^*\)</td><td>Shadow price (dual variable) for constraint \(i\)</td></tr>
+        <tr><td>\(c_n, M_s\)</td><td>Cost coefficients (node cost, penalty cost)</td></tr>
+        <tr><td>\(a_n^r\)</td><td>Resource \(r\) provided by node type \(n\)</td></tr>
+        <tr><td>\(D_s^r\)</td><td>Demand for resource \(r\) by service \(s\)</td></tr>
+        <tr><td>\(K_d^r, C_j^r\)</td><td>Capacity of resource \(r\) at DC \(d\) / server \(j\)</td></tr>
+        <tr><td>\(w_i, w_i^r\)</td><td>Item size (1-D) or multi-dimensional requirement</td></tr>
+        <tr><td>\(B, W_d\)</td><td>Budget cap, power limit at DC \(d\)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+</div> <!-- end main -->
+
+<script>
+
+// Collapsible and QA toggle
+document.querySelectorAll('.collapsible-header, .qa-question').forEach(el => {
+  el.addEventListener('click', () => el.parentElement.classList.toggle('open'));
+});
+
+// Sidebar active link tracking
+const sections = document.querySelectorAll('.section, h2[id], h3[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-20% 0px -60% 0px' });
+sections.forEach(s => { if(s.id) observer.observe(s); });
+
+// Progress bar
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = h > 0 ? (window.scrollY / h) * 100 : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+});
+
+</script>
+</body>
+</html>

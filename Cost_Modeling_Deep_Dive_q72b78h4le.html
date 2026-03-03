@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cost Modeling for Capacity Planning — Deep Dive</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+
+:root {
+  --sidebar-width: 290px;
+  --bg: #fafafa;
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #c4c4d4;
+  --sidebar-active: #e94560;
+  --sidebar-hover: #16213e;
+  --accent: #0071e3;
+  --accent-light: #e8f2fd;
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --card-bg: #ffffff;
+  --border: #e5e5ea;
+  --code-bg: #f5f5f7;
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --danger: #ff3b30;
+  --info: #5ac8fa;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; font-size: 16px;
+}
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-width);
+  background: var(--sidebar-bg); overflow-y: auto; z-index: 100;
+  scrollbar-width: thin; scrollbar-color: #333 var(--sidebar-bg);
+}
+.sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sidebar-header h2 { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
+.sidebar-header .subtitle { color: var(--sidebar-text); font-size: 12px; margin-top: 4px; opacity: 0.7; }
+.nav-section { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.nav-section-title {
+  color: var(--sidebar-active); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.2px; padding: 8px 20px 6px;
+}
+.nav-link {
+  display: block; padding: 7px 20px 7px 28px; color: var(--sidebar-text);
+  text-decoration: none; font-size: 13.5px; transition: all 0.15s;
+  border-left: 3px solid transparent; line-height: 1.4;
+}
+.nav-link:hover { background: var(--sidebar-hover); color: #fff; }
+.nav-link.active { color: #fff; background: var(--sidebar-hover); border-left-color: var(--sidebar-active); font-weight: 500; }
+.nav-link.sub { padding-left: 40px; font-size: 12.5px; opacity: 0.85; }
+.progress-container {
+  padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.05);
+  position: sticky; bottom: 0; background: var(--sidebar-bg);
+}
+.progress-label { color: var(--sidebar-text); font-size: 11px; margin-bottom: 6px; }
+.progress-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--sidebar-active); border-radius: 2px; width: 0%; transition: width 0.3s; }
+.main { margin-left: var(--sidebar-width); padding: 40px 60px 100px; max-width: 960px; }
+.section { margin-bottom: 80px; scroll-margin-top: 24px; }
+.section-number {
+  display: inline-block; background: var(--sidebar-active); color: #fff;
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px;
+  margin-bottom: 12px; letter-spacing: 0.5px;
+}
+h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; color: var(--text); }
+h1 .thin { font-weight: 300; color: var(--text-secondary); }
+h2 { font-size: 24px; font-weight: 600; margin: 48px 0 16px; color: var(--text); letter-spacing: -0.3px; scroll-margin-top: 24px; }
+h3 { font-size: 19px; font-weight: 600; margin: 32px 0 12px; color: var(--text); }
+h4 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; color: var(--text); }
+p { margin-bottom: 16px; }
+.lead { font-size: 18px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 32px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 20px 0; }
+.card.accent { border-left: 4px solid var(--accent); background: var(--accent-light); }
+.card.warning { border-left: 4px solid var(--warning); background: #fff8ee; }
+.card.success { border-left: 4px solid var(--success); background: #f0faf2; }
+.card.danger { border-left: 4px solid var(--danger); background: #fff5f5; }
+.card-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14.5px; }
+thead th {
+  background: var(--sidebar-bg); color: #fff; padding: 12px 16px; text-align: left;
+  font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+thead th:first-child { border-radius: 8px 0 0 0; }
+thead th:last-child { border-radius: 0 8px 0 0; }
+tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:hover { background: var(--accent-light); }
+.code-block {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 20px 0; white-space: pre;
+}
+code {
+  font-family: 'SF Mono', 'Fira Code', monospace; background: var(--code-bg);
+  padding: 2px 6px; border-radius: 4px; font-size: 14px;
+}
+.diagram {
+  background: #fff; border: 2px solid var(--border); border-radius: 12px;
+  padding: 24px; margin: 24px 0; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12.5px; line-height: 1.5; white-space: pre; overflow-x: auto;
+}
+.collapsible { margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.collapsible-header {
+  padding: 14px 20px; background: var(--card-bg); cursor: pointer; font-weight: 600;
+  font-size: 15px; display: flex; justify-content: space-between; align-items: center;
+  user-select: none; transition: background 0.15s;
+}
+.collapsible-header:hover { background: var(--code-bg); }
+.collapsible-header::after { content: '+'; font-size: 20px; color: var(--accent); font-weight: 300; }
+.collapsible.open .collapsible-header::after { content: '\2212'; }
+.collapsible-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.collapsible.open .collapsible-body { max-height: 8000px; }
+.collapsible-content { padding: 16px 20px 20px; border-top: 1px solid var(--border); }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
+.tag.blue { background: #e3f0ff; color: #0055b3; }
+.tag.green { background: #e6f9e8; color: #1b7a2b; }
+.tag.orange { background: #fff3e0; color: #b36b00; }
+.tag.red { background: #ffe5e5; color: #b30000; }
+.tag.purple { background: #f0e6ff; color: #6b21a8; }
+.qa { margin: 20px 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.qa-question {
+  padding: 16px 20px; background: var(--sidebar-bg); color: #fff; font-weight: 600;
+  font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+}
+.qa-question::after {
+  content: 'Show Answer'; font-size: 11px; font-weight: 500; flex-shrink: 0;
+  background: var(--sidebar-active); padding: 4px 10px; border-radius: 4px;
+}
+.qa.open .qa-question::after { content: 'Hide'; }
+.qa-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+.qa.open .qa-answer { max-height: 8000px; }
+.qa-answer-content { padding: 20px; background: #fff; }
+.qa-answer-content p:last-child { margin-bottom: 0; }
+.followup { margin: 16px 0 0 0; padding: 16px; background: var(--code-bg); border-radius: 8px; border-left: 3px solid var(--accent); }
+.followup-q { font-weight: 600; font-size: 14px; color: var(--accent); margin-bottom: 6px; }
+.followup-a { font-size: 14px; color: var(--text); line-height: 1.6; }
+hr { border: none; height: 1px; background: var(--border); margin: 40px 0; }
+.divider {
+  display: flex; align-items: center; gap: 16px; margin: 48px 0 32px;
+  color: var(--text-secondary); font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.math-block {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 24px 28px; margin: 20px 0; overflow-x: auto; line-height: 2.2;
+}
+.math-block .math-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; display: block;
+}
+.katex { font-size: 1.05em; }
+.katex-display { margin: 0.8em 0; }
+ul, ol { margin: 12px 0 16px 24px; }
+li { margin-bottom: 6px; }
+mark { background: #fff3cd; padding: 1px 4px; border-radius: 3px; }
+strong { font-weight: 600; }
+.bridge {
+  background: linear-gradient(135deg, #f0e6ff 0%, #e3f0ff 100%);
+  border: 1px solid #d4c5f9; border-radius: 10px; padding: 20px; margin: 20px 0;
+}
+.bridge-title { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b21a8; margin-bottom: 8px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px; }
+  .two-col { grid-template-columns: 1fr; }
+}
+.step { display: flex; gap: 16px; margin: 20px 0; align-items: flex-start; }
+.step-num {
+  flex-shrink: 0; width: 32px; height: 32px; background: var(--accent); color: #fff;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; margin-top: 2px;
+}
+.step-content { flex: 1; }
+.step-content p:last-child { margin-bottom: 0; }
+
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h2>Cost Modeling Deep Dive</h2>
+    <div class="subtitle">Capacity Planning Interview Prep</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 1</div>
+    <a href="#s1" class="nav-link">Why Cost Modeling Matters</a>
+    <a href="#s1-role" class="nav-link sub">Role in Capacity Planning</a>
+    <a href="#s1-tco" class="nav-link sub">Total Cost of Ownership</a>
+    <a href="#s1-lifecycle" class="nav-link sub">Cost Life-Cycle</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 2</div>
+    <a href="#s2" class="nav-link">CAPEX — Capital Expenditure</a>
+    <a href="#s2-cpu" class="nav-link sub">CPU / Compute</a>
+    <a href="#s2-gpu" class="nav-link sub">GPU / Accelerators</a>
+    <a href="#s2-memory" class="nav-link sub">Memory (DRAM)</a>
+    <a href="#s2-storage" class="nav-link sub">Storage (SSD/HDD)</a>
+    <a href="#s2-network" class="nav-link sub">Network</a>
+    <a href="#s2-facility" class="nav-link sub">Data Center Facility</a>
+    <a href="#s2-depreciation" class="nav-link sub">Depreciation Models</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 3</div>
+    <a href="#s3" class="nav-link">OPEX — Operating Expenditure</a>
+    <a href="#s3-power" class="nav-link sub">Power & Cooling</a>
+    <a href="#s3-people" class="nav-link sub">People & Operations</a>
+    <a href="#s3-software" class="nav-link sub">Software Licensing</a>
+    <a href="#s3-bandwidth" class="nav-link sub">Bandwidth / Transit</a>
+    <a href="#s3-maintenance" class="nav-link sub">Maintenance & Spares</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 4</div>
+    <a href="#s4" class="nav-link">Node Types & Bin Packing</a>
+    <a href="#s4-catalog" class="nav-link sub">Node Catalog</a>
+    <a href="#s4-profiles" class="nav-link sub">Service → Node Matching</a>
+    <a href="#s4-bin" class="nav-link sub">Bin-Packing Problem</a>
+    <a href="#s4-stranding" class="nav-link sub">Resource Stranding</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 5</div>
+    <a href="#s5" class="nav-link">Unit Costs for MIP/LP</a>
+    <a href="#s5-deriving" class="nav-link sub">Deriving Unit Costs</a>
+    <a href="#s5-amortized" class="nav-link sub">Amortized CAPEX</a>
+    <a href="#s5-shadow" class="nav-link sub">Shadow Prices & Duals</a>
+    <a href="#s5-formulation" class="nav-link sub">MIP Objective Function</a>
+    <a href="#s5-sensitivity" class="nav-link sub">Sensitivity Analysis</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Section 6</div>
+    <a href="#s6" class="nav-link">Putting It All Together</a>
+    <a href="#s6-pipeline" class="nav-link sub">End-to-End Pipeline</a>
+    <a href="#s6-tradeoffs" class="nav-link sub">Key Trade-Offs</a>
+    <a href="#s6-interview" class="nav-link sub">Interview Q&A</a>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-label">Reading progress</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</nav>
+
+<div class="main">
+
+<!-- ===================== SECTION 1 ===================== -->
+<div class="section" id="s1">
+  <div class="section-number">SECTION 1</div>
+  <h1>Why Cost Modeling Matters <span class="thin">in Capacity Planning</span></h1>
+  <p class="lead">Cost modeling transforms capacity planning from "how much do we need?" into "what is the cheapest way to meet demand at the required quality?" It is the economic backbone of every planning optimization.</p>
+
+  <h2 id="s1-role">The Role of Cost in Capacity Decisions</h2>
+  <p>At hyperscale (Apple, Google, Meta, AWS), infrastructure spend runs into billions of dollars annually. A capacity planning system that only models <em>demand vs. supply</em> without costs will over-provision expensive resources and under-utilize cheap ones. Cost modeling provides the objective function that the optimizer minimizes.</p>
+
+  <div class="card accent">
+    <div class="card-title">💡 Core Insight</div>
+    <p>In a Mixed Integer Program (MIP) for capacity planning, <strong>every decision variable has a cost coefficient</strong>. The quality of these coefficients directly determines whether the optimizer produces a plan that is economically rational or wastefully expensive. If your cost model is wrong, your "optimal" plan is wrong.</p>
+  </div>
+
+  <p>Cost modeling serves three distinct purposes in a capacity planning system:</p>
+  <ol>
+    <li><strong>Objective function coefficients</strong> — unit costs ($/core-month, $/GB-month) that the optimizer minimizes.</li>
+    <li><strong>Budget constraints</strong> — total CAPEX/OPEX envelopes set by finance that bound the feasible region.</li>
+    <li><strong>Trade-off analysis</strong> — shadow prices (LP/MIP duals) tell you the marginal value of relaxing each constraint, guiding where to invest next.</li>
+  </ol>
+
+  <h2 id="s1-tco">Total Cost of Ownership (TCO)</h2>
+  <p>TCO captures <em>everything</em> it costs to deliver a unit of service over its useful life. It is the single number that allows apples-to-apples comparison between alternatives (buy vs. lease, on-prem vs. cloud, SSD vs. HDD).</p>
+
+  <div class="math-block">
+    <span class="math-label">TCO Formula</span>
+    $$\text{TCO} = \text{CAPEX}_{\text{amortized}} + \text{OPEX}_{\text{annual}} = \frac{\text{Purchase Price}}{N_{\text{years}}} + \text{Power} + \text{Cooling} + \text{Ops} + \text{Licenses} + \text{Maintenance}$$
+  </div>
+
+  <p>For capacity planning optimization, we normalize TCO to a <strong>unit-time cost</strong> — typically $/resource-unit/month — so that it can be multiplied by decision variables representing how many units to allocate.</p>
+
+  <h2 id="s1-lifecycle">Cost Life-Cycle of Infrastructure</h2>
+  <div class="diagram">
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                    INFRASTRUCTURE COST LIFE-CYCLE                               │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  PLAN        PROCURE       DEPLOY       OPERATE       DECOMMISSION               │
+│   │            │             │             │               │                     │
+│   ▼            ▼             ▼             ▼               ▼                     │
+│ Forecast    Purchase      Rack &amp;       Power, Cool,   Salvage value /          │
+│ demand →    servers,      Stack,       Maintain,      e-waste costs              │
+│ size the    switches,     Burn-in,     License,                                  │
+│ order       optics        Provision    Bandwidth                                 │
+│                                                                                  │
+│ ◄──── CAPEX (one-time) ────►  ◄──── OPEX (recurring) ────►  ◄─ Salvage ─►      │
+│                                                                                  │
+│ Lead time: 3–12 months       Useful life: 3–5 years         Residual: 5–10%     │
+└──────────────────────────────────────────────────────────────────────────────────┘</div>
+
+  <div class="card warning">
+    <div class="card-title">⚠️ Interview Tip</div>
+    <p>Mention <strong>lead times</strong>. Hardware procurement takes 3–12 months (longer for GPUs). This is why capacity planning must look ahead — by the time you realize you're short, it's too late to buy. Cost modeling must account for the time-value of early procurement vs. risk of over-buying.</p>
+  </div>
+</div>
+
+<!-- ===================== SECTION 2 ===================== -->
+<div class="section" id="s2">
+  <div class="section-number">SECTION 2</div>
+  <h1>CAPEX <span class="thin">— Capital Expenditure</span></h1>
+  <p class="lead">CAPEX represents the upfront purchase price of physical assets: servers, GPUs, storage arrays, network switches, and data center construction. These are one-time costs that are depreciated over the asset's useful life.</p>
+
+  <h2 id="s2-cpu">CPU / Compute Servers</h2>
+  <p>The CPU server is the workhorse of any cloud. It provides general-purpose compute cores and serves as the host for most workloads. The cost structure is dominated by the processor, motherboard, and chassis.</p>
+
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Typical Range</th><th>Key Cost Drivers</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Dual-socket server (chassis, motherboard, PSU)</td><td>$8,000 – $25,000</td><td>Socket count, PCIe lanes, form factor (1U vs. 2U)</td></tr>
+      <tr><td>CPU (e.g., AMD EPYC 9654, Intel Xeon w9-3595X)</td><td>$3,000 – $12,000 each</td><td>Core count, clock speed, cache size, TDP</td></tr>
+      <tr><td>Base DRAM per server (e.g., 512 GB DDR5)</td><td>$1,500 – $5,000</td><td>Capacity, speed (MT/s), ECC</td></tr>
+      <tr><td>Boot / OS NVMe SSD (2× 480 GB)</td><td>$200 – $500</td><td>Capacity, endurance</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card">
+    <div class="card-title">Worked Example: Compute Node CAPEX</div>
+    <p>A standard compute node: 2× 96-core CPUs, 1 TB DDR5, 2× boot SSDs.</p>
+    <ul>
+      <li>Chassis + motherboard: $12,000</li>
+      <li>2× CPU @ $8,000: $16,000</li>
+      <li>1 TB DDR5 (16× 64 GB DIMMs @ $200): $3,200</li>
+      <li>Boot SSDs: $300</li>
+      <li><strong>Total server CAPEX: ~$31,500</strong></li>
+    </ul>
+    <p>Amortized over 4 years: \(\frac{\$31{,}500}{48 \text{ months}} \approx \$656/\text{month}\) per server, or \(\frac{\$656}{192 \text{ cores}} \approx \$3.42/\text{core-month}\).</p>
+  </div>
+
+  <h2 id="s2-gpu">GPU / Accelerators</h2>
+  <p>GPU nodes are radically more expensive per unit but deliver orders-of-magnitude more throughput for ML training, inference, and some data processing workloads. They dominate CAPEX in any AI-heavy infrastructure.</p>
+
+  <table>
+    <thead>
+      <tr><th>GPU Node Type</th><th>Approx. CAPEX</th><th>Key Specs</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>8× NVIDIA H100 SXM node (DGX-style)</td><td>$250,000 – $400,000</td><td>640 GB HBM3, 8× 700W GPUs, NVLink mesh</td></tr>
+      <tr><td>8× NVIDIA A100 80GB node</td><td>$150,000 – $200,000</td><td>640 GB HBM2e, NVLink bridges</td></tr>
+      <tr><td>4× NVIDIA L40S inference node</td><td>$40,000 – $60,000</td><td>192 GB GDDR6, PCIe form factor</td></tr>
+      <tr><td>Custom ASIC accelerator (TPU-class)</td><td>Varies widely</td><td>Higher efficiency per watt for specific workloads</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card danger">
+    <div class="card-title">🔥 GPU Cost Reality</div>
+    <p>An 8× H100 node at $300K amortized over 5 years = <strong>$5,000/month per node</strong> in CAPEX alone. Add power (8 GPUs × 700W = 5.6 kW just for GPUs, ~10 kW total at the node), and OPEX at $0.06/kWh adds ~$435/month for power. The <strong>total cost per GPU-month is roughly $680</strong>. This is why GPU capacity planning is so critical — misallocation is extremely expensive.</p>
+  </div>
+
+  <h2 id="s2-memory">Memory (DRAM)</h2>
+  <p>DRAM is a significant fraction of server cost (10–40%) and is the most common bottleneck resource in capacity planning. Memory-bound workloads (caches, in-memory databases, large JVM heaps) drive disproportionate server purchases.</p>
+
+  <table>
+    <thead>
+      <tr><th>Memory Type</th><th>Cost per GB</th><th>Typical Per-Server</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>DDR5-4800 ECC RDIMM (64 GB)</td><td>~$3.00/GB</td><td>512 GB – 2 TB</td><td>Standard for new deployments</td></tr>
+      <tr><td>DDR4-3200 ECC RDIMM (64 GB)</td><td>~$2.00/GB</td><td>256 GB – 1 TB</td><td>Legacy fleet, still common</td></tr>
+      <tr><td>HBM3 (GPU, per stack)</td><td>~$15–25/GB</td><td>80 GB per GPU</td><td>On-package, extremely fast</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card accent">
+    <div class="card-title">💡 Memory as the Binding Constraint</div>
+    <p>In many hyperscale environments, memory is the resource that "runs out first" — services request large memory allocations but use modest CPU. This means servers are purchased to satisfy memory demand, leaving CPU cores stranded. Understanding this pattern is essential for cost-effective node type selection.</p>
+  </div>
+
+  <h2 id="s2-storage">Storage (SSD / HDD)</h2>
+  <p>Storage CAPEX varies by an order of magnitude between tiers. The key dimensions are capacity ($/GB), throughput ($/IOPS), and durability ($/PB-written).</p>
+
+  <table>
+    <thead>
+      <tr><th>Storage Tier</th><th>Cost per TB (CAPEX)</th><th>Use Case</th><th>Endurance</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>NVMe SSD (high-perf, data center)</td><td>$80 – $150/TB</td><td>Databases, hot caches, metadata</td><td>3–10 DWPD</td></tr>
+      <tr><td>SATA SSD (read-heavy)</td><td>$50 – $80/TB</td><td>Content serving, warm data</td><td>0.3–1 DWPD</td></tr>
+      <tr><td>HDD (nearline, 18–22 TB)</td><td>$15 – $25/TB</td><td>Object storage, backups, cold data</td><td>N/A (limited write cycles)</td></tr>
+      <tr><td>Tape (LTO-9)</td><td>$3 – $7/TB</td><td>Archival, disaster recovery</td><td>Write-once or limited rewrite</td></tr>
+    </tbody>
+  </table>
+
+  <p>For iCloud specifically, the storage CAPEX is enormous because the primary service is user data storage (photos, backups, documents). The fleet is heavily weighted toward high-density HDD nodes and SSD caching tiers.</p>
+
+  <h2 id="s2-network">Network Equipment</h2>
+  <p>Network CAPEX includes switches (ToR, spine, core), optical transceivers, cabling, and load balancers. Networking is often 15–25% of total DC CAPEX.</p>
+
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Cost Range</th><th>Context</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Top-of-Rack (ToR) switch, 48× 25G + 8× 100G</td><td>$8,000 – $15,000</td><td>One per rack, connects servers to fabric</td></tr>
+      <tr><td>Spine switch, 32× 400G</td><td>$30,000 – $80,000</td><td>Aggregation layer</td></tr>
+      <tr><td>Optical transceiver (400G QSFP-DD)</td><td>$300 – $1,000 each</td><td>Each link needs a pair; volume is massive</td></tr>
+      <tr><td>WAN / backbone router</td><td>$100,000 – $500,000</td><td>Inter-DC traffic</td></tr>
+      <tr><td>Structured cabling (per rack)</td><td>$1,000 – $3,000</td><td>Fiber, copper, cable management</td></tr>
+    </tbody>
+  </table>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Network Oversubscription and Cost Trade-Offs</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Full bisection bandwidth (1:1 oversubscription) is prohibitively expensive. Typical ratios:</p>
+      <ul>
+        <li><strong>ToR → Spine:</strong> 4:1 to 2:1 oversubscription (acceptable for most services)</li>
+        <li><strong>Spine → Core:</strong> 8:1 to 4:1 (inter-pod traffic is lower)</li>
+        <li><strong>Core → WAN:</strong> variable, driven by external traffic patterns</li>
+      </ul>
+      <p>Reducing oversubscription from 4:1 to 2:1 roughly <strong>doubles</strong> the spine-layer switch count and optics budget. The capacity planner must model this trade-off: over-subscribe too aggressively and network becomes the bottleneck; under-subscribe and you waste switch/optics CAPEX.</p>
+    </div></div>
+  </div>
+
+  <h2 id="s2-facility">Data Center Facility CAPEX</h2>
+  <p>Facility costs are the "below the line" CAPEX that often dwarfs server costs on a per-MW basis. They include land, building construction, power distribution (switchgear, UPS, PDUs), cooling infrastructure (chillers, CRAHs), and generators.</p>
+
+  <div class="card">
+    <div class="card-title">Facility Cost Benchmarks</div>
+    <table>
+      <thead>
+        <tr><th>Item</th><th>Industry Range</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Data center build cost (per MW of IT load)</td><td>$7M – $12M per MW</td></tr>
+        <tr><td>PUE (Power Usage Effectiveness)</td><td>1.1 – 1.4 (hyperscale targets &lt;1.2)</td></tr>
+        <tr><td>Useful life of facility</td><td>15 – 25 years</td></tr>
+        <tr><td>Rack density (per rack)</td><td>8 – 30 kW (increasing with GPU workloads)</td></tr>
+      </tbody>
+    </table>
+    <p>PUE directly multiplies your power OPEX: if PUE = 1.2 and IT draws 10 MW, total facility draw is 12 MW. The extra 2 MW is pure overhead (cooling, lighting, losses).</p>
+  </div>
+
+  <h2 id="s2-depreciation">Depreciation Models</h2>
+  <p>Depreciation converts a lump-sum CAPEX into a periodic cost that can be compared with OPEX. The choice of depreciation schedule affects the unit cost coefficients fed into the optimizer.</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Straight-Line Depreciation</div>
+      <p>$$D_{\text{annual}} = \frac{\text{CAPEX} - \text{Salvage}}{N_{\text{years}}}$$</p>
+      <p>Equal cost each year. Simple, widely used. <strong>Most common for capacity planning unit costs.</strong></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Declining-Balance Depreciation</div>
+      <p>$$D_t = \text{Rate} \times \text{Book Value}_{t-1}$$</p>
+      <p>Front-loads cost. Matches reality for hardware that loses value quickly (GPUs) but complicates the optimizer with time-varying costs.</p>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <div class="card-title">💡 Why It Matters for MIP</div>
+    <p>If you depreciate a $300K GPU node over 3 years vs. 5 years, the amortized cost per GPU-month changes by 67%: \(\frac{300{,}000}{36} = \$8{,}333\) vs. \(\frac{300{,}000}{60} = \$5{,}000\). This directly changes which solutions the optimizer selects. The depreciation schedule is a <strong>modeling choice</strong> that has real business implications.</p>
+  </div>
+</div>
+
+<!-- ===================== SECTION 3 ===================== -->
+<div class="section" id="s3">
+  <div class="section-number">SECTION 3</div>
+  <h1>OPEX <span class="thin">— Operating Expenditure</span></h1>
+  <p class="lead">OPEX is the recurring cost of keeping infrastructure running: electricity, cooling, staff, licensing, bandwidth, and maintenance. Unlike CAPEX, OPEX appears immediately on the income statement and scales with fleet size.</p>
+
+  <h2 id="s3-power">Power & Cooling</h2>
+  <p>Electricity is typically the single largest OPEX line item, representing 30–50% of total operating costs. It scales directly with the number and type of servers deployed.</p>
+
+  <div class="math-block">
+    <span class="math-label">Power Cost Formula</span>
+    $$C_{\text{power}} = P_{\text{IT}} \times \text{PUE} \times \text{Rate}_{\text{kWh}} \times 8{,}760 \;\text{hours/year}$$
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Typical Power Draw</th><th>Monthly OPEX @ $0.06/kWh, PUE 1.2</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Compute node (2× CPU, 1 TB RAM)</td><td>500 – 800 W</td><td>$31 – $50/month</td></tr>
+      <tr><td>GPU node (8× H100)</td><td>8 – 12 kW</td><td>$500 – $750/month</td></tr>
+      <tr><td>Storage node (60× HDD, JBOD)</td><td>600 – 900 W</td><td>$38 – $56/month</td></tr>
+      <tr><td>ToR switch</td><td>150 – 300 W</td><td>$9 – $19/month</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card warning">
+    <div class="card-title">⚠️ Power is Not Constant</div>
+    <p>Server power draw varies significantly with utilization. A CPU at idle draws ~30% of peak; at 100% it draws full TDP. For cost modeling, you typically use a <strong>weighted average</strong> based on expected utilization: \(P_{\text{avg}} = P_{\text{idle}} + (P_{\text{peak}} - P_{\text{idle}}) \times U_{\text{avg}}\). For GPUs, the swing is even larger — idle vs. training can be 3–4×.</p>
+  </div>
+
+  <h2 id="s3-people">People & Operations</h2>
+  <p>Staffing costs are allocated per-server or per-rack. Hyperscale operators achieve extremely high server-to-admin ratios (10,000:1 or more) through automation, but the cost is still material.</p>
+
+  <div class="card">
+    <div class="card-title">Operational Staff Cost Allocation</div>
+    <ul>
+      <li><strong>DC technicians</strong> (hardware swap, cabling): ~$5–15/server/month</li>
+      <li><strong>SRE / infrastructure engineering</strong>: allocated per-service or per-cluster</li>
+      <li><strong>Capacity planning team</strong>: overhead, not per-unit</li>
+      <li><strong>Security & compliance</strong>: overhead, but may have per-cluster audit costs</li>
+    </ul>
+    <p>In the optimizer, people costs are usually folded into a per-server OPEX constant rather than modeled as separate decision variables.</p>
+  </div>
+
+  <h2 id="s3-software">Software Licensing</h2>
+  <p>License costs can be per-core, per-socket, per-node, or per-user. They interact with node type selection because a 96-core server running per-core-licensed software costs twice as much in licenses as a 48-core server.</p>
+
+  <table>
+    <thead>
+      <tr><th>License Model</th><th>Example</th><th>Cost Impact</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Per-core</td><td>Oracle Database, some VMware</td><td>Scales with core count; incentivizes fewer, faster cores</td></tr>
+      <tr><td>Per-socket</td><td>Some enterprise middleware</td><td>Incentivizes high core-count per socket</td></tr>
+      <tr><td>Per-node / flat</td><td>OS licenses, monitoring agents</td><td>Incentivizes larger nodes to amortize fixed cost</td></tr>
+      <tr><td>Open source</td><td>Linux, Kubernetes, most Apple-internal</td><td>$0, but support contracts may apply</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="s3-bandwidth">Bandwidth / Transit</h2>
+  <p>For a service like iCloud that serves hundreds of petabytes of user data, bandwidth is a massive OPEX item. Costs depend on the mix of peering, transit, and CDN delivery.</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Transit (buy from ISP)</div>
+      <p>$0.50 – $2.00 per Mbps/month at scale. Expensive but provides global reach.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Peering (exchange traffic)</div>
+      <p>$0.00 – $0.10 per Mbps/month. Nearly free for settlement-free peering, but requires infrastructure at IXPs.</p>
+    </div>
+  </div>
+
+  <h2 id="s3-maintenance">Maintenance & Spares</h2>
+  <p>Hardware fails. At scale, failure is not an exception — it is a statistical certainty. Maintenance costs include spare parts inventory, hardware warranties, and the labor to perform replacements.</p>
+
+  <div class="card">
+    <div class="card-title">Failure Rates & Spare Cost</div>
+    <ul>
+      <li><strong>HDD annual failure rate:</strong> 1–3% → for a 100K HDD fleet, expect 1,000–3,000 replacements/year</li>
+      <li><strong>SSD annual failure rate:</strong> 0.5–1%</li>
+      <li><strong>Server (full unit) annual failure:</strong> 2–5%</li>
+      <li><strong>Typical spare parts budget:</strong> 5–10% of CAPEX annually</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== SECTION 4 ===================== -->
+<div class="section" id="s4">
+  <div class="section-number">SECTION 4</div>
+  <h1>Node Types <span class="thin">& Bin Packing</span></h1>
+  <p class="lead">Real data centers don't buy individual CPUs, GPUs, and DIMMs independently — they buy <strong>server nodes</strong> that bundle resources in fixed proportions. Selecting which node types to buy and how to assign workloads to them is a combinatorial optimization problem.</p>
+
+  <h2 id="s4-catalog">The Node Catalog</h2>
+  <p>A large operator maintains a <strong>catalog</strong> of approved node types (SKUs). Each has a fixed configuration of resources and a known cost. Here's an illustrative catalog:</p>
+
+  <table>
+    <thead>
+      <tr><th>Node Type</th><th>CPU Cores</th><th>RAM (GB)</th><th>GPU</th><th>Storage</th><th>CAPEX</th><th>Monthly OPEX</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag blue">Compute-M</span></td>
+        <td>96</td><td>512</td><td>—</td><td>2× 480 GB SSD (boot)</td>
+        <td>$22,000</td><td>$85</td>
+      </tr>
+      <tr>
+        <td><span class="tag blue">Compute-L</span></td>
+        <td>192</td><td>1,024</td><td>—</td><td>2× 960 GB SSD (boot)</td>
+        <td>$38,000</td><td>$120</td>
+      </tr>
+      <tr>
+        <td><span class="tag green">Memory-XL</span></td>
+        <td>96</td><td>2,048</td><td>—</td><td>2× 480 GB SSD (boot)</td>
+        <td>$42,000</td><td>$110</td>
+      </tr>
+      <tr>
+        <td><span class="tag orange">Storage-HDD</span></td>
+        <td>32</td><td>256</td><td>—</td><td>60× 20 TB HDD (1.2 PB raw)</td>
+        <td>$35,000</td><td>$55</td>
+      </tr>
+      <tr>
+        <td><span class="tag orange">Storage-SSD</span></td>
+        <td>48</td><td>512</td><td>—</td><td>24× 15.36 TB NVMe (368 TB)</td>
+        <td>$65,000</td><td>$95</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">GPU-Train</span></td>
+        <td>128</td><td>2,048</td><td>8× H100</td><td>8× 3.84 TB NVMe</td>
+        <td>$320,000</td><td>$700</td>
+      </tr>
+      <tr>
+        <td><span class="tag purple">GPU-Infer</span></td>
+        <td>64</td><td>512</td><td>4× L40S</td><td>4× 3.84 TB NVMe</td>
+        <td>$55,000</td><td>$180</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card accent">
+    <div class="card-title">💡 Why Fixed Configurations?</div>
+    <p>Hyperscale operators standardize on a small number of SKUs (typically 5–15) for several reasons: volume pricing discounts from vendors (buying 50K identical servers), simplified operations (uniform firmware, diagnostics), faster procurement lead times, and predictable rack power/cooling profiles. The trade-off is <strong>resource stranding</strong> — you cannot buy exactly the mix you need, only whole nodes.</p>
+  </div>
+
+  <h2 id="s4-profiles">Service-to-Node Matching</h2>
+  <p>Each service (workload) has a resource profile — the resources it requires per instance. The capacity planner must map services to compatible node types.</p>
+
+  <div class="diagram">
+Service Profiles (per instance)          Compatible Node Types
+═══════════════════════════              ═════════════════════
+┌─────────────────────────┐
+│ iCloud Photos API       │              Compute-M, Compute-L
+│ 2 cores, 8 GB RAM       │──────────►   (CPU+RAM fit easily)
+│ 100 Mbps network        │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ iCloud Key-Value Store  │              Memory-XL
+│ 4 cores, 64 GB RAM      │──────────►   (memory-bound)
+│ 200 Mbps, 10K IOPS      │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ Photo ML Classification │              GPU-Infer
+│ 2 cores, 16 GB RAM      │──────────►   (needs GPU)
+│ 1 GPU slice             │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ User Backup Storage     │              Storage-HDD
+│ 0.5 cores, 4 GB RAM     │──────────►   (capacity-bound)
+│ 50 TB capacity          │
+└─────────────────────────┘</div>
+
+  <h2 id="s4-bin">The Bin-Packing Problem</h2>
+  <p>Given the service demand (number of instances needed) and the node catalog, how many of each node type should we buy? This is a variant of the <strong>multi-dimensional bin packing</strong> problem — NP-hard in general, which is why we use MIP solvers.</p>
+
+  <div class="math-block">
+    <span class="math-label">Bin Packing as MIP</span>
+    $$\min \sum_{n \in \text{NodeTypes}} c_n \cdot x_n$$
+    $$\text{subject to:} \quad \sum_{n} a_{r,n} \cdot x_n \geq D_r \quad \forall \; r \in \text{Resources}$$
+    $$x_n \in \mathbb{Z}_{\geq 0}$$
+  </div>
+
+  <p>Where \(x_n\) is the number of nodes of type \(n\) to purchase, \(c_n\) is the total cost (amortized CAPEX + OPEX) per node, \(a_{r,n}\) is the amount of resource \(r\) provided by node type \(n\), and \(D_r\) is the total demand for resource \(r\).</p>
+
+  <h2 id="s4-stranding">Resource Stranding</h2>
+  <p>Because nodes have fixed resource ratios, it's nearly impossible to match supply exactly to demand across all dimensions. <strong>Stranding</strong> is the gap between provisioned and consumed resources.</p>
+
+  <div class="card warning">
+    <div class="card-title">⚠️ Stranding Example</div>
+    <p>You need 1,000 cores and 16 TB of RAM. Using Compute-L nodes (192 cores, 1 TB RAM each): you need \(\lceil 16{,}000/1{,}024 \rceil = 16\) nodes for memory, providing \(16 \times 192 = 3{,}072\) cores. That's <strong>2,072 stranded cores</strong> (67% CPU waste). Alternatively, using Memory-XL nodes (96 cores, 2 TB RAM): you need \(\lceil 16{,}000/2{,}048 \rceil = 8\) nodes, providing \(8 \times 96 = 768\) cores — now you're <strong>232 cores short</strong>. The optimizer finds the best mix, perhaps 6 Memory-XL + 2 Compute-M = 768 + 192 = 960 cores, 12,288 + 1,024 = 13,312 GB RAM... still iterating.</p>
+  </div>
+
+  <div class="bridge">
+    <div class="bridge-title">Link to MIP Optimization</div>
+    <p>The stranding cost is implicitly captured by the MIP formulation: the optimizer buys whole nodes (integer variables), and any surplus resource is "free" but represents wasted CAPEX. Minimizing total cost naturally minimizes stranding. More sophisticated formulations add a <strong>stranding penalty</strong> term to discourage solutions with extreme imbalance.</p>
+  </div>
+</div>
+
+<!-- ===================== SECTION 5 ===================== -->
+<div class="section" id="s5">
+  <div class="section-number">SECTION 5</div>
+  <h1>Unit Costs for MIP/LP <span class="thin">Optimization</span></h1>
+  <p class="lead">The optimizer needs a single number — the cost of one unit of each decision — to populate its objective function. Deriving these unit costs from the raw CAPEX/OPEX data is a critical modeling step.</p>
+
+  <h2 id="s5-deriving">Deriving Unit Costs</h2>
+  <p>There are two common approaches to constructing unit costs for the optimizer, depending on the formulation:</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Approach A: Node-Level Decision Variables</div>
+      <p>Decision variable: \(x_n\) = number of nodes of type \(n\).</p>
+      <p>Unit cost: total cost of one node over the planning horizon.</p>
+      <p>$$c_n = \frac{\text{CAPEX}_n}{N_{\text{months}}} + \text{OPEX}_n^{\text{monthly}}$$</p>
+      <p>This is conceptually simpler and is the most common formulation.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Approach B: Resource-Level Decision Variables</div>
+      <p>Decision variable: \(y_r\) = units of resource \(r\) allocated.</p>
+      <p>Unit cost: $/core-month, $/GB-month, $/GPU-month.</p>
+      <p>Requires allocating node cost across resources — more complex but allows finer-grained trade-offs.</p>
+    </div>
+  </div>
+
+  <h3>Approach A — Worked Example (Node-Level)</h3>
+
+  <div class="card success">
+    <div class="card-title">✅ Unit Cost Derivation: Compute-L Node</div>
+    <p>Given: CAPEX = $38,000, Useful life = 4 years, Salvage = $2,000, Monthly OPEX = $120.</p>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <p><strong>Amortize CAPEX:</strong> \(\frac{\$38{,}000 - \$2{,}000}{48 \text{ months}} = \$750/\text{month}\)</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <p><strong>Add monthly OPEX:</strong> \(\$750 + \$120 = \$870/\text{month per node}\)</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <p><strong>This is the cost coefficient \(c_n\) in the MIP objective function.</strong> If the optimizer decides to buy 100 Compute-L nodes, the cost contribution is \(100 \times \$870 = \$87{,}000/\text{month}\).</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Approach B — Marginal Resource Costing</h3>
+  <p>When the decision variables are resource-level (e.g., "how many cores to allocate to service S"), you need per-resource unit costs. There are several methods:</p>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Method 1: Proportional Allocation</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Allocate node cost in proportion to the market value of each resource type:</p>
+      <p>$$c_{\text{core}} = c_n \times \frac{V_{\text{CPU}}}{V_{\text{CPU}} + V_{\text{RAM}} + V_{\text{storage}}}$$</p>
+      <p>Where \(V_{\text{CPU}}\) is the component cost of the CPUs in the node, etc. This is a rough heuristic but easy to compute.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Method 2: Dominant Resource Cost</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Assign the full node cost to the <em>bottleneck resource</em> — the one that limits how many instances fit on the node. If memory is the binding constraint, the entire cost is allocated to memory, and CPU cost is effectively zero. This mirrors reality: you're buying the node <em>because</em> you need the memory.</p>
+      <p>This approach leads to pathological edge cases but can be useful for quick estimates.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Method 3: Shadow Prices from LP Relaxation (Recommended)</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Run the LP relaxation (drop integrality constraints) and extract the <strong>dual variables</strong> (shadow prices) on each resource constraint. The dual \(\lambda_r\) for resource \(r\) tells you the marginal cost of one more unit of that resource — this is the economically correct unit cost.</p>
+      <p>$$\lambda_r = \frac{\partial \text{Objective}}{\partial D_r}$$</p>
+      <p>This is the gold-standard approach. Shadow prices naturally capture node-mix effects: if memory is scarce relative to CPU, its shadow price will be high, signaling that investing in memory-dense nodes has the highest ROI.</p>
+    </div></div>
+  </div>
+
+  <h2 id="s5-amortized">Amortized CAPEX in Practice</h2>
+  <p>Amortization converts one-time purchase costs into per-period costs suitable for the optimizer. The key decisions are:</p>
+
+  <table>
+    <thead>
+      <tr><th>Parameter</th><th>Typical Range</th><th>Impact on Unit Cost</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Useful life (servers)</td><td>3–5 years</td><td>Longer life → lower amortized cost → optimizer buys more of this type</td></tr>
+      <tr><td>Useful life (GPUs)</td><td>3–4 years</td><td>Shorter due to rapid generational improvements</td></tr>
+      <tr><td>Useful life (network switches)</td><td>5–7 years</td><td>Longer than servers; evolves more slowly</td></tr>
+      <tr><td>Useful life (facility)</td><td>15–25 years</td><td>Very low amortized cost per-month, but huge absolute CAPEX</td></tr>
+      <tr><td>Salvage value</td><td>5–15% of CAPEX</td><td>Reduces amortized cost; higher for commodity servers</td></tr>
+      <tr><td>Discount rate (cost of capital)</td><td>8–12% WACC</td><td>Higher rate penalizes large upfront CAPEX; favors leasing</td></tr>
+    </tbody>
+  </table>
+
+  <div class="math-block">
+    <span class="math-label">Amortized Monthly Cost with Discount Rate</span>
+    $$c_{\text{monthly}} = \frac{(\text{CAPEX} - \text{Salvage}) \times \frac{r(1+r)^T}{(1+r)^T - 1}}{12} + \text{OPEX}_{\text{monthly}}$$
+    <p style="margin-top: 12px; font-size: 14px;">Where \(r\) = annual discount rate (WACC), \(T\) = useful life in years. This is the annuity formula — the same math as a mortgage payment.</p>
+  </div>
+
+  <h2 id="s5-shadow">Shadow Prices & LP Duals</h2>
+  <p>Shadow prices are one of the most powerful outputs of the capacity planning optimizer. They answer: <em>"If I had one more unit of this constrained resource, how much would it save?"</em></p>
+
+  <div class="card accent">
+    <div class="card-title">💡 Shadow Price Interpretation</div>
+    <p>Suppose the LP dual for the "GPU capacity" constraint is $800/GPU-month. This means:</p>
+    <ul>
+      <li>Each additional GPU would reduce total system cost by $800/month.</li>
+      <li>Any project that can free up a GPU and save &lt; $800/month is worth doing.</li>
+      <li>If a new GPU node costs $680/GPU-month (amortized CAPEX + OPEX), <strong>buying more GPUs is cost-justified</strong> because the shadow price exceeds the acquisition cost.</li>
+    </ul>
+    <p>When the shadow price equals zero, the resource is not binding — you have slack, and buying more provides no benefit.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Shadow Prices for Common Resources</div>
+    <table>
+      <thead>
+        <tr><th>Resource</th><th>Typical Shadow Price Range</th><th>Interpretation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CPU core-month</td><td>$0 – $5</td><td>Often low because CPU is abundant relative to RAM</td></tr>
+        <tr><td>GB RAM-month</td><td>$0.05 – $0.50</td><td>Often the binding constraint; high shadow price</td></tr>
+        <tr><td>GPU-month (H100)</td><td>$500 – $2,000</td><td>Very high when GPU demand exceeds supply</td></tr>
+        <tr><td>TB storage-month (HDD)</td><td>$0.30 – $1.00</td><td>Low cost per TB, but massive aggregate demand</td></tr>
+        <tr><td>Gbps network-month</td><td>$5 – $50</td><td>Varies enormously by location and oversubscription</td></tr>
+        <tr><td>MW power capacity</td><td>$50K – $200K/month</td><td>Physical ceiling; can't exceed facility power limit</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="s5-formulation">Complete MIP Objective Function</h2>
+  <p>Here is a representative capacity planning MIP formulation showing how costs enter the optimization:</p>
+
+  <div class="math-block">
+    <span class="math-label">Full MIP Formulation</span>
+    $$\min \underbrace{\sum_{n,d} c_n^{\text{capex}} \cdot x_{n,d}}_{\text{Amortized CAPEX}} + \underbrace{\sum_{n,d} c_n^{\text{opex}} \cdot x_{n,d}}_{\text{Monthly OPEX}} + \underbrace{\sum_{s,d} c_s^{\text{penalty}} \cdot u_{s,d}}_{\text{Unmet Demand Penalty}}$$
+
+    <p style="margin-top: 16px; font-size: 14px;"><strong>Subject to:</strong></p>
+    $$\sum_{n} a_{r,n} \cdot x_{n,d} \geq \sum_{s} d_{r,s,d} \cdot y_{s,d} + u_{s,d} \quad \forall \; r, d \quad \text{(resource sufficiency)}$$
+    $$\sum_{n} P_n \cdot x_{n,d} \leq W_d \quad \forall \; d \quad \text{(power capacity at DC } d\text{)}$$
+    $$\sum_{n,d} c_n^{\text{capex}} \cdot x_{n,d} \leq B_{\text{capex}} \quad \text{(budget constraint)}$$
+    $$x_{n,d} \in \mathbb{Z}_{\geq 0}, \quad y_{s,d} \geq 0, \quad u_{s,d} \geq 0$$
+
+    <p style="margin-top: 16px; font-size: 14px;"><strong>Variables:</strong> \(x_{n,d}\) = nodes of type \(n\) at DC \(d\); \(y_{s,d}\) = instances of service \(s\) at DC \(d\); \(u_{s,d}\) = unmet demand (slack).</p>
+  </div>
+
+  <div class="card warning">
+    <div class="card-title">⚠️ The Unmet Demand Penalty</div>
+    <p>The penalty cost \(c_s^{\text{penalty}}\) is a modeling device. Set it very high (e.g., $10,000/instance-month) and the optimizer will almost never leave demand unmet — but infeasible solutions crash. Set it moderately (e.g., 2–5× the normal cost), and the optimizer can gracefully shed low-priority demand under budget constraints. This is how you implement <strong>service tiering</strong>: higher-priority services get higher penalty costs.</p>
+  </div>
+
+  <h2 id="s5-sensitivity">Sensitivity Analysis</h2>
+  <p>After solving the MIP, sensitivity analysis reveals how robust the solution is to changes in costs and constraints.</p>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Cost Coefficient Ranging</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>How much can a node's cost change before the optimal solution shifts? If Compute-L costs $870/month and the ranging analysis says the solution holds for $750–$1,050, you have confidence the plan is stable. If the range is narrow ($860–$880), small cost changes could cause a completely different procurement plan — a red flag for robustness.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Constraint RHS Ranging (Shadow Price Validity)</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Shadow prices are valid only within a range of the constraint's RHS (right-hand side). If the GPU shadow price is $800/GPU-month and the validity range is 100–500 GPUs, then the $800 figure applies only while total GPU demand is in that range. Outside it, the binding constraints change and shadow prices shift — possibly dramatically.</p>
+    </div></div>
+  </div>
+
+  <div class="collapsible">
+    <div class="collapsible-header">Scenario Analysis</div>
+    <div class="collapsible-body"><div class="collapsible-content">
+      <p>Re-solve the MIP under different cost assumptions: "What if GPU prices drop 30%?", "What if electricity rates increase 50%?", "What if we extend server life from 4 to 5 years?" This produces a portfolio of plans, and the capacity team picks the one that is most robust across likely scenarios.</p>
+    </div></div>
+  </div>
+</div>
+
+<!-- ===================== SECTION 6 ===================== -->
+<div class="section" id="s6">
+  <div class="section-number">SECTION 6</div>
+  <h1>Putting It All Together</h1>
+  <p class="lead">End-to-end cost modeling pipeline, key trade-offs to discuss in an interview, and practice Q&A.</p>
+
+  <h2 id="s6-pipeline">End-to-End Cost Modeling Pipeline</h2>
+
+  <div class="diagram">
+┌──────────────┐    ┌──────────────┐    ┌─────────────────┐    ┌──────────────┐
+│   RAW COST   │    │  NORMALIZE   │    │   CONSTRUCT     │    │   FEED TO    │
+│    INPUTS    │───►│  & AMORTIZE  │───►│  UNIT COSTS     │───►│   OPTIMIZER  │
+└──────────────┘    └──────────────┘    └─────────────────┘    └──────────────┘
+       │                   │                     │                     │
+  - Vendor quotes      - Depreciation        - Per-node costs      - MIP/LP solve
+  - Power rates          schedule            - Per-resource costs   - Optimal plan
+  - License fees       - PUE adjustment      - Penalty costs        - Shadow prices
+  - Labor rates        - Utilization         - Budget constraints   - Sensitivity
+  - Facility costs       weighting                                    analysis
+                       - Discount rate
+                         (WACC)
+
+                               ┌─────────────────────────┐
+                               │    OUTPUT: OPTIMAL PLAN  │
+                               ├─────────────────────────┤
+                               │  - Nodes to buy per DC   │
+                               │  - Service placement     │
+                               │  - Shadow prices         │
+                               │  - Stranding report      │
+                               │  - Sensitivity ranges    │
+                               │  - Total cost forecast   │
+                               └─────────────────────────┘</div>
+
+  <h2 id="s6-tradeoffs">Key Trade-Offs to Articulate</h2>
+
+  <div class="card">
+    <div class="card-title">Trade-Off 1: Few Large Nodes vs. Many Small Nodes</div>
+    <p><strong>Fewer large nodes:</strong> lower per-node OPEX (fewer units to manage), better bin packing (more room per node), but higher per-unit CAPEX and bigger blast radius on failure.</p>
+    <p><strong>Many small nodes:</strong> lower CAPEX per unit, finer granularity for scheduling, but higher ops overhead and worse power efficiency (more PSUs, more management NICs).</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Trade-Off 2: Homogeneous vs. Heterogeneous Fleet</div>
+    <p><strong>Homogeneous:</strong> simplifies operations, maximizes volume discounts, enables uniform scheduling. But one size never fits all workloads — high stranding.</p>
+    <p><strong>Heterogeneous:</strong> better workload fit (less stranding), but complicates procurement, firmware management, scheduling, and spare parts inventory.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Trade-Off 3: CAPEX Front-Loading vs. Incremental Buys</div>
+    <p><strong>Large upfront buy:</strong> better volume discounts (5–15% reduction), locks in supply (important during shortages), but ties up capital and risks technology obsolescence.</p>
+    <p><strong>Incremental purchases:</strong> lower financial risk, ability to adopt newer generations sooner, but higher unit prices and procurement overhead.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Trade-Off 4: Depreciation Horizon</div>
+    <p><strong>Shorter depreciation (3 years):</strong> higher monthly amortized cost, but refreshes hardware sooner (better performance, lower failure rates, better power efficiency). Financially conservative.</p>
+    <p><strong>Longer depreciation (5 years):</strong> lower monthly cost, but older fleet means higher failure rates, worse power efficiency, and potential inability to run new workloads. Financially aggressive.</p>
+  </div>
+
+  <h2 id="s6-interview">Interview Q&A</h2>
+
+  <div class="qa">
+    <div class="qa-question">Q: How do you determine the unit cost coefficients for a capacity planning MIP?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>The process has three layers. First, gather raw costs: vendor quotes for hardware CAPEX, utility rates for power, HR data for labor, and license agreements for software. Second, normalize to a common time basis (typically monthly) by amortizing CAPEX using straight-line depreciation over the asset's useful life, adjusting for salvage value and the company's discount rate (WACC). Add monthly OPEX items: power (watts × PUE × rate), ops labor allocation, and licensing. Third, if the MIP uses node-level decision variables, the unit cost is simply the total monthly cost per node type. If it uses resource-level variables, you either decompose the node cost proportionally across resources or — better — solve the LP relaxation first and use shadow prices as the marginal resource costs. The shadow price approach is economically rigorous because it captures the interaction between node mix and workload fit.</p>
+
+      <div class="followup">
+        <div class="followup-q">Follow-up: What if the cost data is uncertain?</div>
+        <div class="followup-a">Run the optimizer under multiple cost scenarios (optimistic, baseline, pessimistic) and compare plans. If the same procurement decision appears across all scenarios, it's robust. If it flips, that's a signal to delay the decision or hedge (e.g., buy 70% of the baseline plan now, reserve the rest for a later decision point). You can also use stochastic programming where cost parameters are random variables with known distributions.</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q: What role do node types play in the optimization?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>Node types are the fundamental unit of procurement — you buy whole servers, not individual cores. Each node type is a fixed bundle of resources (cores, RAM, GPUs, storage, power draw) with a known cost. In the MIP, each node type becomes an integer decision variable: "how many of node type N should we deploy in data center D?" The constraints ensure total resources across all purchased nodes meet or exceed demand from all services. The optimizer selects the cheapest combination of node types that satisfies all resource demands while respecting power, space, and budget limits. The integer requirement is what makes this a MIP rather than an LP — you can't buy 3.7 servers. The implication is that you will always have some resource stranding (surplus capacity in one dimension), and the optimizer minimizes the cost of that waste implicitly.</p>
+
+      <div class="followup">
+        <div class="followup-q">Follow-up: How do you decide how many node types to offer?</div>
+        <div class="followup-a">It's a meta-optimization problem. Too few node types → high stranding, poor workload fit. Too many → fragmented procurement volumes (losing discounts), operational complexity (more firmware variants, more spare types). In practice, hyperscale operators find 5–15 node types in the active catalog to be the sweet spot. The catalog is refreshed annually based on new hardware generations and shifting workload profiles. Some operators run a "catalog optimization" step before the capacity MIP: given projected workload mix, what set of K node types minimizes total cost? This is itself a combinatorial problem, sometimes solved with genetic algorithms or enumeration over candidate configurations.</div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q: How do shadow prices help in capacity planning decisions?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>Shadow prices (dual variables from the LP relaxation) quantify the marginal value of each constrained resource. If the shadow price of RAM is $0.30/GB-month and the shadow price of CPU is $0/core-month, that tells you: (1) RAM is the binding bottleneck — buying nodes specifically for their memory is justified, (2) CPU has slack — you're already buying enough cores as a side effect of meeting memory demand, (3) any efficiency project that frees up 1 GB of RAM saves $0.30/month — multiply by fleet size for total impact, and (4) a new service requesting 100 GB RAM per instance should be charged \(100 \times \$0.30 = \$30/\text{month}\) for its capacity footprint — this enables internal chargeback. Shadow prices also guide the next budget ask: if the power constraint's shadow price is $100K/MW-month, proposing a new DC with 10 MW of additional capacity is worth $1M/month in reduced system cost.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q: Walk me through CAPEX vs. OPEX for a GPU cluster.</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>Let's size a 1,000-GPU H100 cluster (125 nodes × 8 GPUs each):</p>
+      <p><strong>CAPEX:</strong></p>
+      <ul>
+        <li>125 GPU nodes × $320K = $40M server CAPEX</li>
+        <li>Network fabric (InfiniBand 400G for AI training): ~$3M (switches, cables, optics)</li>
+        <li>Rack infrastructure (power, cooling, cabling): ~$1.5M</li>
+        <li><strong>Total CAPEX: ~$44.5M</strong></li>
+        <li>Amortized over 4 years: $44.5M / 48 = <strong>~$927K/month</strong></li>
+      </ul>
+      <p><strong>OPEX:</strong></p>
+      <ul>
+        <li>Power: 125 nodes × 10 kW × PUE 1.2 × $0.06/kWh × 730 hrs = <strong>~$65.7K/month</strong></li>
+        <li>Operations (labor, monitoring): ~$15K/month</li>
+        <li>Maintenance/spares (5% of CAPEX annually / 12): ~$185K/month</li>
+        <li>Software licenses (cluster management, CUDA, etc.): ~$20K/month</li>
+        <li><strong>Total OPEX: ~$286K/month</strong></li>
+      </ul>
+      <p><strong>Total monthly cost: ~$1.21M → $1,213 per GPU per month.</strong> Of this, ~76% is amortized CAPEX and ~24% is OPEX. This ratio is typical for GPU clusters — they are heavily capital-intensive. Compare to CPU clusters where OPEX can be 35–45% of total cost due to lower CAPEX per server.</p>
+    </div></div>
+  </div>
+
+  <div class="qa">
+    <div class="qa-question">Q: How does energy cost and PUE affect capacity planning decisions?</div>
+    <div class="qa-answer"><div class="qa-answer-content">
+      <p>PUE (Power Usage Effectiveness) is the ratio of total facility power to IT equipment power. A PUE of 1.2 means 20% overhead for cooling, lighting, and losses. This directly scales the power component of OPEX. For capacity planning, PUE matters because: (1) it varies by data center — a DC in a cool climate might have PUE 1.08 while one in a hot climate has 1.35. The optimizer should prefer placing power-hungry workloads (GPU training) in low-PUE facilities. (2) It varies by rack density — ultra-dense racks may require liquid cooling (higher PUE at the rack, but lower at the facility). (3) Power has a hard ceiling — each DC has a maximum power allocation from the utility. If you're approaching that limit, the shadow price of power capacity skyrockets and the optimizer must find power-efficient node types or shift demand to other DCs. (4) Carbon considerations are increasingly important; some companies add a $/ton-CO₂ surcharge to the cost model, penalizing high-carbon electricity regions. This changes placement decisions even when the raw electricity cost is similar.</p>
+    </div></div>
+  </div>
+
+  <hr>
+  <div class="divider">Quick Reference</div>
+
+  <div class="card">
+    <div class="card-title">Cost Modeling Cheat Sheet for the Interview</div>
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Key Formula / Number</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Amortized CAPEX</td><td>\(\text{(CAPEX} - \text{Salvage)} / \text{Useful Life in Months}\)</td></tr>
+        <tr><td>Monthly Power Cost</td><td>\(\text{kW} \times \text{PUE} \times \text{Rate}_{kWh} \times 730\)</td></tr>
+        <tr><td>TCO per node</td><td>\(\text{Amortized CAPEX} + \text{Monthly OPEX}\)</td></tr>
+        <tr><td>Shadow Price</td><td>\(\lambda_r = \partial \text{Obj} / \partial D_r\) (LP dual)</td></tr>
+        <tr><td>GPU node TCO/month</td><td>~$5K–8K (H100 class)</td></tr>
+        <tr><td>Compute node TCO/month</td><td>~$700–1,200</td></tr>
+        <tr><td>Storage node TCO/month</td><td>~$500–900 (HDD), $1,200–2,500 (SSD)</td></tr>
+        <tr><td>PUE target (hyperscale)</td><td>1.1 – 1.2</td></tr>
+        <tr><td>Server useful life</td><td>3–5 years</td></tr>
+        <tr><td>Procurement lead time</td><td>3–12 months (GPUs longer)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div> <!-- end main -->
+
+<script>
+
+// Collapsible and QA toggle
+document.querySelectorAll('.collapsible-header, .qa-question').forEach(el => {
+  el.addEventListener('click', () => el.parentElement.classList.toggle('open'));
+});
+
+// Sidebar active link tracking
+const sections = document.querySelectorAll('.section, h2[id], h3[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-20% 0px -60% 0px' });
+sections.forEach(s => { if(s.id) observer.observe(s); });
+
+// Progress bar
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = h > 0 ? (window.scrollY / h) * 100 : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+});
+
+</script>
+</body>
+</html>
